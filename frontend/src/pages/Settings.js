@@ -7,12 +7,19 @@ import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
 import { toast } from "sonner";
-import { Save, Building, Key, Loader2 } from "lucide-react";
+import { Save, Building, Key, Loader2, Lock, Eye, EyeOff } from "lucide-react";
 
 const Settings = () => {
   const { isOwner, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: "",
+    new_password: "",
+    confirm_password: ""
+  });
   const [settings, setSettings] = useState({
     company_name: "",
     company_address: "",
