@@ -71,6 +71,34 @@ const Settings = () => {
     setSettings({ ...settings, [field]: value });
   };
 
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      toast.error("New passwords do not match");
+      return;
+    }
+    
+    if (passwordForm.new_password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await api.post("/auth/change-password", {
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password
+      });
+      toast.success("Password changed successfully");
+      setPasswordForm({ current_password: "", new_password: "", confirm_password: "" });
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to change password");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
