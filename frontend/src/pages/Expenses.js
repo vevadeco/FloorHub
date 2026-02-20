@@ -175,11 +175,12 @@ const Expenses = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
-                  <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })} required>
+                  <Select value={formData.category || "select-category"} onValueChange={(v) => setFormData({ ...formData, category: v === "select-category" ? "" : v })}>
                     <SelectTrigger data-testid="expense-category-select">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="select-category" disabled>Select category</SelectItem>
                       {categories.map(c => (
                         <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                       ))}
