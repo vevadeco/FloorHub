@@ -43,9 +43,25 @@ const navItems = [
 const Layout = ({ children }) => {
   const { user, logout, isOwner } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
 
   const currentPage = navItems.find(item => item.path === location.pathname)?.label || "Dashboard";
+
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [location]);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await api.get("/messages/unread-count");
+      setUnreadCount(response.data.unread_count);
+    } catch (error) {
+      console.error("Failed to fetch unread count");
+    }
+  };
+
+  const filteredNavItems = navItems.filter(item => !item.ownerOnly || isOwner);
 
   return (
     <div className="min-h-screen bg-background">
