@@ -333,12 +333,12 @@ const Invoices = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Select Existing Customer</Label>
-                      <Select value={selectedCustomer || ""} onValueChange={handleCustomerSelect}>
+                      <Select value={selectedCustomer || "new"} onValueChange={(v) => handleCustomerSelect(v === "new" ? null : v)}>
                         <SelectTrigger data-testid="customer-select">
                           <SelectValue placeholder="Select or enter new" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">New Customer</SelectItem>
+                          <SelectItem value="new">New Customer</SelectItem>
                           {customers.map(c => (
                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                           ))}
