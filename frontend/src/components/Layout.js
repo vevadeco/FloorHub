@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import api from "../lib/api";
 import { 
   LayoutDashboard, 
   Package, 
@@ -13,9 +14,15 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  BarChart3,
+  PieChart,
+  MessageSquare,
+  UserPlus,
+  Bell
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import { cn } from "../lib/utils";
 
 const navItems = [
@@ -26,6 +33,10 @@ const navItems = [
   { icon: Target, label: "Leads", path: "/leads" },
   { icon: DollarSign, label: "Expenses", path: "/expenses" },
   { icon: Wrench, label: "Contractors", path: "/contractors" },
+  { icon: BarChart3, label: "Reports", path: "/reports" },
+  { icon: PieChart, label: "Analytics", path: "/analytics" },
+  { icon: MessageSquare, label: "Messages", path: "/messages" },
+  { icon: UserPlus, label: "Employees", path: "/employees", ownerOnly: true },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
