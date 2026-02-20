@@ -102,7 +102,7 @@ const Layout = ({ children }) => {
 
           {/* Nav Items */}
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto mt-14 lg:mt-0">
-            {navItems.map((item) => (
+            {filteredNavItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
@@ -117,6 +117,11 @@ const Layout = ({ children }) => {
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
+                {item.label === "Messages" && unreadCount > 0 && (
+                  <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs">
+                    {unreadCount}
+                  </Badge>
+                )}
               </NavLink>
             ))}
           </nav>
