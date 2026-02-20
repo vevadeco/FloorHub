@@ -223,11 +223,12 @@ const Leads = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="project_type">Project Type</Label>
-                  <Select value={formData.project_type} onValueChange={(v) => setFormData({ ...formData, project_type: v })}>
+                  <Select value={formData.project_type || "none"} onValueChange={(v) => setFormData({ ...formData, project_type: v === "none" ? "" : v })}>
                     <SelectTrigger data-testid="lead-project-type-select">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
                       {projectTypes.map(t => (
                         <SelectItem key={t} value={t}>{t}</SelectItem>
                       ))}
