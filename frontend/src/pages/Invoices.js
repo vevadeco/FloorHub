@@ -48,7 +48,47 @@ const Invoices = () => {
 
   useEffect(() => {
     fetchData();
+    fetchStates();
   }, []);
+
+  const fetchStates = async () => {
+    try {
+      const response = await api.get("/address/states");
+      setStates(response.data);
+    } catch (error) {
+      console.error("Failed to fetch states");
+    }
+  };
+
+  const fetchAddressSuggestions = useCallback(
+    debounce(async (query) => {
+      if (query.length < 2) {
+        setAddressSuggestions([]);
+        return;
+      }
+      try {
+        const response = await api.get(`/address/suggestions?query=${encodeURIComponent(query)}`);
+        setAddressSuggestions(response.data);
+        setShowAddressSuggestions(response.data.length > 0);
+      } catch (error) {
+        console.error("Failed to fetch suggestions");
+      }
+    }, 300),
+    []
+  );
+
+  const handleAddressChange = (value) => {
+    setCustomerForm({ ...customerForm, address: value });
+    fetchAddressSuggestions(value);
+  };
+
+  const selectAddressSuggestion = (suggestion) => {
+    setCustomerForm({
+      ...customerForm,
+      address: suggestion.full_address
+    });
+    setShowAddressSuggestions(false);
+  };
 
   const fetchData = async () => {
     try {
