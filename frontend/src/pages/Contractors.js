@@ -204,11 +204,12 @@ const Contractors = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="specialty">Specialty</Label>
-                    <Select value={formData.specialty} onValueChange={(v) => setFormData({ ...formData, specialty: v })}>
+                    <Select value={formData.specialty || "select-specialty"} onValueChange={(v) => setFormData({ ...formData, specialty: v === "select-specialty" ? "" : v })}>
                       <SelectTrigger data-testid="contractor-specialty-select">
                         <SelectValue placeholder="Select specialty" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="select-specialty">None</SelectItem>
                         {specialties.map(s => (
                           <SelectItem key={s} value={s}>{s}</SelectItem>
                         ))}
