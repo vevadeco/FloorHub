@@ -164,9 +164,10 @@ Create a web app for flooring store owners. This will include employee login and
 ## Test Credentials
 - **Owner Account**: owner@floorhub.com / test123456
 - **Stripe**: Test mode enabled with sk_test_emergent
+- **Resend Email**: API key configured (re_4r5N4ZKq_...)
 
 ## Next Tasks
-1. Configure RESEND_API_KEY for email functionality
-2. Set up Facebook Lead Ads webhook
-3. Add employee accounts for testing role restrictions
-4. Consider adding charts to dashboard
+1. ~~Configure RESEND_API_KEY for email functionality~~ ✓ Done
+2. Set up Facebook Lead Ads webhook with API credentials
+3. Add more chart visualizations to Analytics
+4. Consider adding inventory stock alerts
