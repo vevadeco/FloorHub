@@ -100,18 +100,30 @@ Create a web app for flooring store owners. This will include employee login and
 - [x] Stripe checkout integration
 - [x] Payment status polling
 - [x] Facebook webhook endpoint (ready)
+- [x] Manual payment recording
+- [x] Messages system (owner broadcasts)
+- [x] Employee account creation
+- [x] Password change
+- [x] Financial reports API
+- [x] Transaction reports API
+- [x] Analytics API
+- [x] Address suggestions
 
 ### Frontend Pages
 - [x] Login/Register page
 - [x] Dashboard with bento grid stats
 - [x] Inventory management
 - [x] Invoices & Estimates (with sq ft to boxes conversion)
-- [x] Invoice detail with PDF download
+- [x] Invoice detail with PDF download + Manual Payments
 - [x] Customer database
 - [x] Lead management
 - [x] Expense tracking
 - [x] Contractor phonebook
-- [x] Settings page
+- [x] Settings page with password change
+- [x] Reports page (Financial + Transactions)
+- [x] Analytics page with charts
+- [x] Messages system
+- [x] Employee management (owner only)
 
 ### Features
 - [x] Role-based access control
@@ -121,6 +133,9 @@ Create a web app for flooring store owners. This will include employee login and
 - [x] Toast notifications
 - [x] Search and filter capabilities
 - [x] Calendar date picker (Shadcn)
+- [x] Charts and graphs (Recharts)
+- [x] Address autocomplete
+- [x] Email notifications (Resend API configured)
 
 ## Prioritized Backlog
 
