@@ -1,0 +1,216 @@
+{
+  "identity": {
+    "designer": "E1",
+    "mission": "Create a flooring store SaaS that feels like a modern architectural studio—grounded, tactile, and precise.",
+    "tone": "Organic & Earthy meets Soft Utility",
+    "core_principles": [
+      "Fusion over Imitation: Mix 'Architectural Precision' with 'Warm Materiality'.",
+      "Emotion First: The app should feel 'sturdy' and 'reliable', like good oak flooring.",
+      "Content is King: Data clarity is paramount for inventory, but it shouldn't look like a spreadsheet.",
+      "Negative Space: Use whitespace to reduce cognitive load for busy store owners."
+    ]
+  },
+  "typography": {
+    "fonts": {
+      "heading": {
+        "family": "Manrope",
+        "fallback": "sans-serif",
+        "url": "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap",
+        "weights": ["500", "600", "700", "800"],
+        "usage": "All headings (h1-h6), prominent labels, stat values."
+      },
+      "body": {
+        "family": "DM Sans",
+        "fallback": "sans-serif",
+        "url": "https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap",
+        "weights": ["400", "500", "700"],
+        "usage": "Body text, table data, inputs, buttons."
+      }
+    },
+    "rules": [
+      "Headings: Use `tracking-tight` for all headings larger than 24px.",
+      "Labels: Uppercase labels must use `tracking-widest` and `text-xs`.",
+      "Numbers: Use tabular nums (`tabular-nums`) for all price and inventory data."
+    ]
+  },
+  "colors": {
+    "theme": "light",
+    "palette": {
+      "background": {
+        "default": "#fafaf9",
+        "paper": "#ffffff",
+        "subtle": "#f5f5f4"
+      },
+      "foreground": {
+        "default": "#1c1917",
+        "muted": "#78716c",
+        "inverse": "#ffffff"
+      },
+      "primary": {
+        "default": "#1e293b",
+        "foreground": "#ffffff",
+        "hover": "#0f172a"
+      },
+      "secondary": {
+        "default": "#e7e5e4",
+        "foreground": "#1c1917",
+        "hover": "#d6d3d1"
+      },
+      "accent": {
+        "default": "#ea580c",
+        "foreground": "#ffffff",
+        "hover": "#c2410c",
+        "description": "Terracotta/Clay for primary CTAs and highlights."
+      },
+      "destructive": {
+        "default": "#ef4444",
+        "foreground": "#ffffff"
+      },
+      "border": "#e7e5e4",
+      "input": "#e7e5e4",
+      "ring": "#ea580c"
+    },
+    "tailwind_config_extension": {
+      "colors": {
+        "stone": {
+          "50": "#fafaf9",
+          "100": "#f5f5f4",
+          "200": "#e7e5e4",
+          "300": "#d6d3d1",
+          "800": "#292524",
+          "900": "#1c1917"
+        },
+        "slate": {
+          "800": "#1e293b",
+          "900": "#0f172a"
+        },
+        "orange": {
+          "600": "#ea580c",
+          "700": "#c2410c"
+        }
+      }
+    }
+  },
+  "layout": {
+    "spacing_scale": {
+      "base": "4px",
+      "container_padding": "p-6 md:p-8 lg:p-12",
+      "section_gap": "gap-8 md:gap-12"
+    },
+    "grid_system": {
+      "dashboard": {
+        "type": "Bento Grid",
+        "classes": "grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-6",
+        "logic": [
+          "Summary Widgets: col-span-1 md:col-span-2 lg:col-span-3",
+          "Main Chart: col-span-1 md:col-span-4 lg:col-span-8 row-span-2",
+          "Feed/List: col-span-1 md:col-span-2 lg:col-span-4 row-span-2"
+        ]
+      },
+      "form": {
+        "type": "Two Column",
+        "classes": "grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6"
+      }
+    },
+    "containers": {
+      "card": "rounded-xl border border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow duration-200",
+      "main_content": "max-w-7xl mx-auto w-full"
+    }
+  },
+  "components": {
+    "ui": {
+      "button": {
+        "default": "rounded-lg font-medium transition-all active:scale-95",
+        "primary": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md",
+        "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        "outline": "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        "ghost": "hover:bg-accent hover:text-accent-foreground",
+        "link": "text-primary underline-offset-4 hover:underline"
+      },
+      "input": {
+        "base": "rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      },
+      "card": {
+        "base": "rounded-xl border bg-card text-card-foreground shadow-sm",
+        "header": "flex flex-col space-y-1.5 p-6",
+        "content": "p-6 pt-0"
+      },
+      "table": {
+        "wrapper": "relative w-full overflow-auto rounded-lg border",
+        "header": "bg-muted/50 font-medium text-muted-foreground",
+        "row": "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+      }
+    },
+    "custom": {
+      "tracing_beam": {
+        "usage": "Use for high-priority cards or active states.",
+        "style": "Border gradient that animates or a subtle glow effect."
+      },
+      "glassmorphism": {
+        "usage": "Sticky headers and modal overlays.",
+        "classes": "bg-white/80 backdrop-blur-md border-b border-white/20"
+      }
+    }
+  },
+  "visual_enhancers": {
+    "shadows": {
+      "layered": "shadow-[0_2px_4px_rgba(0,0,0,0.05),0_12px_24px_rgba(0,0,0,0.05)]",
+      "inner": "inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)"
+    },
+    "radius": {
+      "default": "0.75rem",
+      "small": "0.5rem",
+      "large": "1rem"
+    },
+    "textures": {
+      "sidebar": "Use a subtle noise texture (opacity 0.02) on the sidebar background to give it a 'paper' feel."
+    }
+  },
+  "motion": {
+    "library": "framer-motion",
+    "defaults": {
+      "duration": 0.3,
+      "ease": "easeOut"
+    },
+    "variants": {
+      "fadeIn": {
+        "initial": { "opacity": 0, "y": 10 },
+        "animate": { "opacity": 1, "y": 0 },
+        "exit": { "opacity": 0, "y": -10 }
+      },
+      "stagger": {
+        "animate": { "transition": { "staggerChildren": 0.1 } }
+      }
+    }
+  },
+  "images": {
+    "login_background": {
+      "url": "https://images.unsplash.com/photo-1753911371680-f004f101a74a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHw0fHxtb2Rlcm4lMjBmbG9vcmluZyUyMHNob3dyb29tJTIwaW50ZXJpb3IlMjBtaW5pbWFsaXN0fGVufDB8fHx8MTc3MTYyMDgyMXww&ixlib=rb-4.1.0&q=85",
+      "description": "Minimalist white room with open doorway, conveying potential and space."
+    },
+    "dashboard_hero": {
+      "url": "https://images.unsplash.com/photo-1762811003338-aef30274513b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBmbG9vcmluZyUyMHNob3dyb29tJTIwaW50ZXJpb3IlMjBtaW5pbWFsaXN0fGVufDB8fHx8MTc3MTYyMDgyMXww&ixlib=rb-4.1.0&q=85",
+      "description": "Modern interior with large windows, suitable for dashboard widgets or welcome banner."
+    },
+    "texture_wood": {
+      "url": "https://images.unsplash.com/photo-1770086962001-3da4f60e7db5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBmbG9vcmluZyUyMHNob3dyb29tJTIwaW50ZXJpb3IlMjBtaW5pbWFsaXN0fGVufDB8fHx8MTc3MTYyMDgyMXww&ixlib=rb-4.1.0&q=85",
+      "description": "Wood benches on marble floor, good for texture reference or specific product cards."
+    }
+  },
+  "universal_guidelines": [
+    "Avoid 'AI Slop': Do not use generic gradients or default Tailwind blue.",
+    "Data-Test-ID: All interactive elements MUST have a `data-testid` attribute (e.g., `data-testid='login-button'`).",
+    "Contrast: Ensure all text meets APCA contrast standards. Use darker grays for text on light backgrounds.",
+    "Input Fields: Never use the native date picker. Use the Shadcn Calendar component.",
+    "Toasts: Use `sonner` for all notifications.",
+    "Empty States: Never leave a list empty without a helpful message and a call to action.",
+    "Loading States: Use skeletons that match the layout of the loading content, not generic spinners."
+  ],
+  "instructions_to_main_agent": [
+    "Install the required fonts (Manrope, DM Sans) in `index.css` via @import or link in `index.html`.",
+    "Update `tailwind.config.js` with the custom color palette and font families.",
+    "Implement the 'Layout Wrapper' component that handles the sidebar and header structure.",
+    "Build the Dashboard using the Bento Grid principles defined above.",
+    "Ensure the 'Leads' and 'Inventory' tables use the 'Soft Utility' styling (compact but rounded)."
+  ]
+}
