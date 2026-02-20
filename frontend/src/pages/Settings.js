@@ -269,6 +269,86 @@ const Settings = () => {
           </CardContent>
         </Card>
 
+        {/* Change Password */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                <Lock className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <CardTitle className="font-heading text-lg">Change Password</CardTitle>
+                <CardDescription>Update your account password</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="max-w-md space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="current_password">Current Password</Label>
+                <div className="relative">
+                  <Input
+                    id="current_password"
+                    type={showPasswords ? "text" : "password"}
+                    value={passwordForm.current_password}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
+                    placeholder="••••••••"
+                    data-testid="current-password-input"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new_password">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="new_password"
+                    type={showPasswords ? "text" : "password"}
+                    value={passwordForm.new_password}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+                    placeholder="••••••••"
+                    data-testid="new-password-input"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm_password">Confirm New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirm_password"
+                    type={showPasswords ? "text" : "password"}
+                    value={passwordForm.confirm_password}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+                    placeholder="••••••••"
+                    className="pr-10"
+                    data-testid="confirm-password-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords(!showPasswords)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={handlePasswordChange}
+                disabled={changingPassword || !passwordForm.current_password || !passwordForm.new_password}
+                className="bg-amber-600 hover:bg-amber-700"
+                data-testid="change-password-button"
+              >
+                {changingPassword ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Lock className="h-4 w-4 mr-2" />
+                )}
+                Change Password
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Save Button */}
         {isOwner && (
           <div className="flex justify-end">
