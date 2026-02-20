@@ -215,6 +215,42 @@ class Settings(SettingsBase):
     id: str = "company_settings"
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# New Models for additional features
+
+class ManualPaymentBase(BaseModel):
+    invoice_id: str
+    amount: float
+    payment_method: str = "cash"  # cash, check, bank_transfer, card, other
+    reference_number: Optional[str] = ""
+    notes: Optional[str] = ""
+    date: str  # ISO date string
+
+class ManualPayment(ManualPaymentBase):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_by: str = ""
+
+class MessageBase(BaseModel):
+    title: str
+    content: str
+    priority: str = "normal"  # low, normal, high, urgent
+
+class Message(MessageBase):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_by: str = ""
+    created_by_name: str = ""
+    read_by: List[str] = []
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+class CreateEmployeeRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+
 # ===================== AUTH HELPERS =====================
 
 def hash_password(password: str) -> str:
