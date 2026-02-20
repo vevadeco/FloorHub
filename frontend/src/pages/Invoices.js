@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
@@ -11,9 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Textarea } from "../components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 import { toast } from "sonner";
-import { Plus, FileText, Trash2, Search, Eye, Calculator } from "lucide-react";
+import { Plus, FileText, Trash2, Search, Eye, Calculator, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
+import { cn } from "../lib/utils";
+import debounce from "lodash.debounce";
 
 const Invoices = () => {
   const { isOwner } = useAuth();
