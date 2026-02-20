@@ -1110,6 +1110,428 @@ async def delete_user(user_id: str, current_user: dict = Depends(require_owner))
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "User deleted"}
 
+# ===================== CREATE EMPLOYEE (Owner only) =====================
+
+@api_router.post("/users/create-employee", response_model=UserResponse)
+async def create_employee(employee_data: CreateEmployeeRequest, current_user: dict = Depends(require_owner)):
+    existing = await db.users.find_one({"email": employee_data.email}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    user = User(
+        email=employee_data.email,
+        name=employee_data.name,
+        role="employee"
+    )
+    
+    user_dict = user.model_dump()
+    user_dict['password'] = hash_password(employee_data.password)
+    user_dict['created_at'] = user_dict['created_at'].isoformat()
+    
+    await db.users.insert_one(user_dict)
+    
+    return UserResponse(id=user.id, email=user.email, name=user.name, role=user.role)
+
+# ===================== CHANGE PASSWORD =====================
+
+@api_router.post("/auth/change-password")
+async def change_password(request: PasswordChangeRequest, current_user: dict = Depends(get_current_user)):
+    user = await db.users.find_one({"id": current_user['user_id']}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not verify_password(request.current_password, user['password']):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    new_hashed = hash_password(request.new_password)
+    await db.users.update_one(
+        {"id": current_user['user_id']},
+        {"$set": {"password": new_hashed}}
+    )
+    
+    return {"message": "Password changed successfully"}
+
+# ===================== MANUAL PAYMENTS =====================
+
+@api_router.post("/payments/manual", response_model=ManualPayment)
+async def create_manual_payment(payment_data: ManualPaymentBase, current_user: dict = Depends(get_current_user)):
+    # Verify invoice exists
+    invoice = await db.invoices.find_one({"id": payment_data.invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    payment = ManualPayment(**payment_data.model_dump())
+    payment.created_by = current_user['user_id']
+    
+    payment_dict = payment.model_dump()
+    payment_dict['created_at'] = payment_dict['created_at'].isoformat()
+    
+    await db.manual_payments.insert_one(payment_dict)
+    
+    # Calculate total paid for this invoice
+    all_payments = await db.manual_payments.find({"invoice_id": payment_data.invoice_id}, {"_id": 0}).to_list(100)
+    total_paid = sum(p.get('amount', 0) for p in all_payments)
+    
+    # Update invoice status if fully paid
+    if total_paid >= invoice.get('total', 0):
+        await db.invoices.update_one(
+            {"id": payment_data.invoice_id},
+            {"$set": {"status": "paid", "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    elif total_paid > 0:
+        await db.invoices.update_one(
+            {"id": payment_data.invoice_id},
+            {"$set": {"status": "partial", "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    return payment
+
+@api_router.get("/payments/manual/invoice/{invoice_id}", response_model=List[ManualPayment])
+async def get_invoice_manual_payments(invoice_id: str, current_user: dict = Depends(get_current_user)):
+    payments = await db.manual_payments.find({"invoice_id": invoice_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return payments
+
+@api_router.get("/payments/manual", response_model=List[ManualPayment])
+async def get_all_manual_payments(current_user: dict = Depends(get_current_user)):
+    payments = await db.manual_payments.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return payments
+
+@api_router.delete("/payments/manual/{payment_id}")
+async def delete_manual_payment(payment_id: str, current_user: dict = Depends(require_owner)):
+    payment = await db.manual_payments.find_one({"id": payment_id}, {"_id": 0})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    result = await db.manual_payments.delete_one({"id": payment_id})
+    
+    # Recalculate invoice status
+    invoice_id = payment.get('invoice_id')
+    if invoice_id:
+        invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+        if invoice:
+            all_payments = await db.manual_payments.find({"invoice_id": invoice_id}, {"_id": 0}).to_list(100)
+            total_paid = sum(p.get('amount', 0) for p in all_payments)
+            
+            if total_paid >= invoice.get('total', 0):
+                new_status = "paid"
+            elif total_paid > 0:
+                new_status = "partial"
+            else:
+                new_status = "sent" if invoice.get('status') != 'draft' else "draft"
+            
+            await db.invoices.update_one(
+                {"id": invoice_id},
+                {"$set": {"status": new_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
+    
+    return {"message": "Payment deleted"}
+
+# ===================== MESSAGES SYSTEM =====================
+
+@api_router.post("/messages", response_model=Message)
+async def create_message(message_data: MessageBase, current_user: dict = Depends(require_owner)):
+    user = await db.users.find_one({"id": current_user['user_id']}, {"_id": 0})
+    
+    message = Message(**message_data.model_dump())
+    message.created_by = current_user['user_id']
+    message.created_by_name = user.get('name', 'Owner') if user else 'Owner'
+    
+    message_dict = message.model_dump()
+    message_dict['created_at'] = message_dict['created_at'].isoformat()
+    
+    await db.messages.insert_one(message_dict)
+    return message
+
+@api_router.get("/messages", response_model=List[Message])
+async def get_messages(current_user: dict = Depends(get_current_user)):
+    messages = await db.messages.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return messages
+
+@api_router.post("/messages/{message_id}/read")
+async def mark_message_read(message_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.messages.update_one(
+        {"id": message_id},
+        {"$addToSet": {"read_by": current_user['user_id']}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Message not found")
+    return {"message": "Marked as read"}
+
+@api_router.delete("/messages/{message_id}")
+async def delete_message(message_id: str, current_user: dict = Depends(require_owner)):
+    result = await db.messages.delete_one({"id": message_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Message not found")
+    return {"message": "Message deleted"}
+
+@api_router.get("/messages/unread-count")
+async def get_unread_count(current_user: dict = Depends(get_current_user)):
+    count = await db.messages.count_documents({"read_by": {"$ne": current_user['user_id']}})
+    return {"unread_count": count}
+
+# ===================== ANALYTICS & REPORTS =====================
+
+@api_router.get("/reports/financial")
+async def get_financial_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    # Get all invoices and expenses
+    invoice_query = {"is_estimate": False}
+    expense_query = {}
+    
+    if start_date and end_date:
+        invoice_query["created_at"] = {"$gte": start_date, "$lte": end_date}
+        expense_query["date"] = {"$gte": start_date, "$lte": end_date}
+    
+    invoices = await db.invoices.find(invoice_query, {"_id": 0}).to_list(10000)
+    expenses = await db.expenses.find(expense_query, {"_id": 0}).to_list(10000)
+    manual_payments = await db.manual_payments.find({}, {"_id": 0}).to_list(10000)
+    
+    # Calculate revenue (from paid invoices)
+    total_revenue = sum(inv.get('total', 0) for inv in invoices if inv.get('status') == 'paid')
+    total_pending = sum(inv.get('total', 0) for inv in invoices if inv.get('status') in ['draft', 'sent', 'partial'])
+    
+    # Calculate expenses by category
+    expense_by_category = {}
+    for exp in expenses:
+        cat = exp.get('category', 'other')
+        expense_by_category[cat] = expense_by_category.get(cat, 0) + exp.get('amount', 0)
+    
+    total_expenses = sum(exp.get('amount', 0) for exp in expenses)
+    
+    # Gross profit
+    gross_profit = total_revenue - total_expenses
+    
+    # Payment method breakdown
+    payment_methods = {}
+    for p in manual_payments:
+        method = p.get('payment_method', 'other')
+        payment_methods[method] = payment_methods.get(method, 0) + p.get('amount', 0)
+    
+    return {
+        "total_revenue": total_revenue,
+        "total_pending": total_pending,
+        "total_expenses": total_expenses,
+        "gross_profit": gross_profit,
+        "profit_margin": (gross_profit / total_revenue * 100) if total_revenue > 0 else 0,
+        "expense_by_category": expense_by_category,
+        "payment_methods": payment_methods,
+        "invoice_count": len(invoices),
+        "paid_invoice_count": sum(1 for inv in invoices if inv.get('status') == 'paid'),
+        "expense_count": len(expenses)
+    }
+
+@api_router.get("/reports/transactions")
+async def get_transaction_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    # Get all payment transactions
+    query = {}
+    manual_query = {}
+    
+    if start_date and end_date:
+        query["created_at"] = {"$gte": start_date, "$lte": end_date}
+        manual_query["date"] = {"$gte": start_date, "$lte": end_date}
+    
+    stripe_transactions = await db.payment_transactions.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    manual_payments = await db.manual_payments.find(manual_query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    # Combine and format transactions
+    transactions = []
+    
+    for t in stripe_transactions:
+        invoice = await db.invoices.find_one({"id": t.get('invoice_id', '')}, {"_id": 0})
+        transactions.append({
+            "id": t.get('id'),
+            "type": "stripe",
+            "amount": t.get('amount', 0),
+            "status": t.get('payment_status', 'unknown'),
+            "invoice_number": invoice.get('invoice_number', '') if invoice else '',
+            "customer_name": invoice.get('customer_name', '') if invoice else '',
+            "date": t.get('created_at', ''),
+            "reference": t.get('session_id', '')
+        })
+    
+    for p in manual_payments:
+        invoice = await db.invoices.find_one({"id": p.get('invoice_id', '')}, {"_id": 0})
+        transactions.append({
+            "id": p.get('id'),
+            "type": "manual",
+            "amount": p.get('amount', 0),
+            "status": "completed",
+            "invoice_number": invoice.get('invoice_number', '') if invoice else '',
+            "customer_name": invoice.get('customer_name', '') if invoice else '',
+            "date": p.get('date', p.get('created_at', '')),
+            "reference": p.get('reference_number', ''),
+            "payment_method": p.get('payment_method', '')
+        })
+    
+    # Sort by date
+    transactions.sort(key=lambda x: x.get('date', ''), reverse=True)
+    
+    return {"transactions": transactions}
+
+@api_router.get("/reports/analytics")
+async def get_analytics(current_user: dict = Depends(get_current_user)):
+    from datetime import datetime, timedelta
+    
+    now = datetime.now(timezone.utc)
+    
+    # Monthly data for the last 12 months
+    monthly_data = []
+    for i in range(11, -1, -1):
+        month_start = (now.replace(day=1) - timedelta(days=i*30)).replace(day=1)
+        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        
+        month_str = month_start.strftime("%Y-%m")
+        month_label = month_start.strftime("%b %Y")
+        
+        # Get invoices for this month
+        invoices = await db.invoices.find({
+            "is_estimate": False,
+            "created_at": {"$regex": f"^{month_str}"}
+        }, {"_id": 0}).to_list(1000)
+        
+        revenue = sum(inv.get('total', 0) for inv in invoices if inv.get('status') == 'paid')
+        invoice_count = len(invoices)
+        
+        # Get expenses for this month
+        expenses = await db.expenses.find({
+            "date": {"$regex": f"^{month_str}"}
+        }, {"_id": 0}).to_list(1000)
+        
+        expense_total = sum(exp.get('amount', 0) for exp in expenses)
+        
+        # Get leads for this month
+        leads = await db.leads.find({
+            "created_at": {"$regex": f"^{month_str}"}
+        }, {"_id": 0}).to_list(1000)
+        
+        lead_count = len(leads)
+        converted_leads = sum(1 for l in leads if l.get('status') == 'won')
+        
+        monthly_data.append({
+            "month": month_label,
+            "revenue": revenue,
+            "expenses": expense_total,
+            "profit": revenue - expense_total,
+            "invoices": invoice_count,
+            "leads": lead_count,
+            "converted_leads": converted_leads
+        })
+    
+    # Current month stats
+    current_month = now.strftime("%Y-%m")
+    
+    current_invoices = await db.invoices.find({
+        "is_estimate": False,
+        "created_at": {"$regex": f"^{current_month}"}
+    }, {"_id": 0}).to_list(1000)
+    
+    current_expenses = await db.expenses.find({
+        "date": {"$regex": f"^{current_month}"}
+    }, {"_id": 0}).to_list(1000)
+    
+    current_leads = await db.leads.find({
+        "created_at": {"$regex": f"^{current_month}"}
+    }, {"_id": 0}).to_list(1000)
+    
+    # Lead status breakdown
+    all_leads = await db.leads.find({}, {"_id": 0}).to_list(10000)
+    lead_by_status = {}
+    for lead in all_leads:
+        status = lead.get('status', 'unknown')
+        lead_by_status[status] = lead_by_status.get(status, 0) + 1
+    
+    # Invoice status breakdown
+    all_invoices = await db.invoices.find({"is_estimate": False}, {"_id": 0}).to_list(10000)
+    invoice_by_status = {}
+    for inv in all_invoices:
+        status = inv.get('status', 'unknown')
+        invoice_by_status[status] = invoice_by_status.get(status, 0) + 1
+    
+    return {
+        "monthly_data": monthly_data,
+        "current_month": {
+            "revenue": sum(inv.get('total', 0) for inv in current_invoices if inv.get('status') == 'paid'),
+            "expenses": sum(exp.get('amount', 0) for exp in current_expenses),
+            "invoices": len(current_invoices),
+            "leads": len(current_leads)
+        },
+        "lead_by_status": lead_by_status,
+        "invoice_by_status": invoice_by_status
+    }
+
+# ===================== ADDRESS SUGGESTIONS =====================
+
+# US States for address autocomplete
+US_STATES = [
+    {"code": "AL", "name": "Alabama"}, {"code": "AK", "name": "Alaska"},
+    {"code": "AZ", "name": "Arizona"}, {"code": "AR", "name": "Arkansas"},
+    {"code": "CA", "name": "California"}, {"code": "CO", "name": "Colorado"},
+    {"code": "CT", "name": "Connecticut"}, {"code": "DE", "name": "Delaware"},
+    {"code": "FL", "name": "Florida"}, {"code": "GA", "name": "Georgia"},
+    {"code": "HI", "name": "Hawaii"}, {"code": "ID", "name": "Idaho"},
+    {"code": "IL", "name": "Illinois"}, {"code": "IN", "name": "Indiana"},
+    {"code": "IA", "name": "Iowa"}, {"code": "KS", "name": "Kansas"},
+    {"code": "KY", "name": "Kentucky"}, {"code": "LA", "name": "Louisiana"},
+    {"code": "ME", "name": "Maine"}, {"code": "MD", "name": "Maryland"},
+    {"code": "MA", "name": "Massachusetts"}, {"code": "MI", "name": "Michigan"},
+    {"code": "MN", "name": "Minnesota"}, {"code": "MS", "name": "Mississippi"},
+    {"code": "MO", "name": "Missouri"}, {"code": "MT", "name": "Montana"},
+    {"code": "NE", "name": "Nebraska"}, {"code": "NV", "name": "Nevada"},
+    {"code": "NH", "name": "New Hampshire"}, {"code": "NJ", "name": "New Jersey"},
+    {"code": "NM", "name": "New Mexico"}, {"code": "NY", "name": "New York"},
+    {"code": "NC", "name": "North Carolina"}, {"code": "ND", "name": "North Dakota"},
+    {"code": "OH", "name": "Ohio"}, {"code": "OK", "name": "Oklahoma"},
+    {"code": "OR", "name": "Oregon"}, {"code": "PA", "name": "Pennsylvania"},
+    {"code": "RI", "name": "Rhode Island"}, {"code": "SC", "name": "South Carolina"},
+    {"code": "SD", "name": "South Dakota"}, {"code": "TN", "name": "Tennessee"},
+    {"code": "TX", "name": "Texas"}, {"code": "UT", "name": "Utah"},
+    {"code": "VT", "name": "Vermont"}, {"code": "VA", "name": "Virginia"},
+    {"code": "WA", "name": "Washington"}, {"code": "WV", "name": "West Virginia"},
+    {"code": "WI", "name": "Wisconsin"}, {"code": "WY", "name": "Wyoming"}
+]
+
+@api_router.get("/address/states")
+async def get_states():
+    return US_STATES
+
+@api_router.get("/address/suggestions")
+async def get_address_suggestions(query: str, current_user: dict = Depends(get_current_user)):
+    # Get past customer addresses for suggestions
+    if len(query) < 2:
+        return []
+    
+    customers = await db.customers.find(
+        {"address": {"$regex": query, "$options": "i"}},
+        {"_id": 0, "address": 1, "city": 1, "state": 1, "zip_code": 1}
+    ).limit(10).to_list(10)
+    
+    suggestions = []
+    for c in customers:
+        if c.get('address'):
+            full_address = c.get('address', '')
+            if c.get('city'):
+                full_address += f", {c.get('city')}"
+            if c.get('state'):
+                full_address += f", {c.get('state')}"
+            if c.get('zip_code'):
+                full_address += f" {c.get('zip_code')}"
+            suggestions.append({
+                "address": c.get('address', ''),
+                "city": c.get('city', ''),
+                "state": c.get('state', ''),
+                "zip_code": c.get('zip_code', ''),
+                "full_address": full_address
+            })
+    
+    return suggestions
+
 # ===================== ROOT =====================
 
 @api_router.get("/")
