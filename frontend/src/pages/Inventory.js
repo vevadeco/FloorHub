@@ -185,14 +185,14 @@ const Inventory = () => {
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
                   <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
-                    required
+                    value={formData.category || "select-category"}
+                    onValueChange={(value) => setFormData({ ...formData, category: value === "select-category" ? "" : value })}
                   >
                     <SelectTrigger data-testid="product-category-select">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="select-category" disabled>Select category</SelectItem>
                       {categories.map((cat) => (
                         <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                       ))}
