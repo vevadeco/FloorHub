@@ -11,6 +11,10 @@ import Leads from "./pages/Leads";
 import Expenses from "./pages/Expenses";
 import Contractors from "./pages/Contractors";
 import Settings from "./pages/Settings";
+import Reports from "./pages/Reports";
+import Analytics from "./pages/Analytics";
+import Messages from "./pages/Messages";
+import Employees from "./pages/Employees";
 import Layout from "./components/Layout";
 
 const ProtectedRoute = ({ children }) => {
