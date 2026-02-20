@@ -42,6 +42,9 @@ const Invoices = () => {
   const [taxRate, setTaxRate] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [notes, setNotes] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [states, setStates] = useState([]);
 
   useEffect(() => {
     fetchData();
