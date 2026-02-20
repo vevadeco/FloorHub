@@ -172,8 +172,11 @@ const Invoices = () => {
   };
 
   const handleCustomerSelect = (customerId) => {
-    setSelectedCustomer(customerId);
-    if (customerId) {
+    if (customerId === "new" || !customerId) {
+      setSelectedCustomer(null);
+      setCustomerForm({ name: "", email: "", phone: "", address: "" });
+    } else {
+      setSelectedCustomer(customerId);
       const customer = customers.find(c => c.id === customerId);
       if (customer) {
         setCustomerForm({
