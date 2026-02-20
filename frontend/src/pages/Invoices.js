@@ -423,14 +423,35 @@ const Invoices = () => {
                         data-testid="customer-phone-input"
                       />
                     </div>
-                    <div className="md:col-span-2 space-y-2">
+                    <div className="md:col-span-2 space-y-2 relative">
                       <Label htmlFor="customer_address">Address</Label>
-                      <Input
-                        id="customer_address"
-                        value={customerForm.address}
-                        onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })}
-                        data-testid="customer-address-input"
-                      />
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="customer_address"
+                          value={customerForm.address}
+                          onChange={(e) => handleAddressChange(e.target.value)}
+                          onFocus={() => setShowAddressSuggestions(addressSuggestions.length > 0)}
+                          onBlur={() => setTimeout(() => setShowAddressSuggestions(false), 200)}
+                          className="pl-10"
+                          placeholder="Start typing to see suggestions..."
+                          data-testid="customer-address-input"
+                        />
+                      </div>
+                      {showAddressSuggestions && addressSuggestions.length > 0 && (
+                        <div className="absolute z-10 w-full bg-card border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                          {addressSuggestions.map((suggestion, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
+                              onClick={() => selectAddressSuggestion(suggestion)}
+                            >
+                              {suggestion.full_address}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
