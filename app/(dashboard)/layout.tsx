@@ -19,7 +19,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   const settingsResult = await sql`SELECT logo_url FROM settings WHERE id='company_settings'`
-  const logoUrl = settingsResult.rows[0]?.logo_url ?? ''
+  const logoUrl = (settingsResult.rows[0]?.logo_url as string) ?? ''
 
   return (
     <div className="flex min-h-screen bg-background">
