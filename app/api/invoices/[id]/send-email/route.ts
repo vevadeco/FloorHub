@@ -21,7 +21,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const settingsResult = await sql`SELECT * FROM settings WHERE id = 'company_settings'`
     const settings = settingsResult.rows[0] || {}
 
-    const invoice: Invoice = {
+    const invoice = {
       ...inv,
       subtotal: parseFloat(inv.subtotal),
       tax_rate: parseFloat(inv.tax_rate),
@@ -29,13 +29,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       discount: parseFloat(inv.discount),
       total: parseFloat(inv.total),
       items: itemsResult.rows.map(i => ({
-        ...i,
+        id: i.id,
+        product_id: i.product_id,
+        product_name: i.product_name,
+        boxes_needed: i.boxes_needed,
+        cost_price: i.cost_price ? parseFloat(i.cost_price) : undefined,
         sqft_needed: parseFloat(i.sqft_needed),
         sqft_per_box: parseFloat(i.sqft_per_box),
         unit_price: parseFloat(i.unit_price),
         total_price: parseFloat(i.total_price),
       }))
-    }
+    } as Invoice
 
     const settingsObj: Settings = {
       id: settings.id || 'company_settings',
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       html: `<p>Please find your ${inv.is_estimate ? 'estimate' : 'invoice'} ${inv.invoice_number} attached.</p><p>Total: $${parseFloat(inv.total).toFixed(2)}</p>`,
       attachments: [{
         filename: `${inv.invoice_number}.pdf`,
-        content: pdfBuffer.toString('base64'),
+        content: Buffer.from(pdfBuffer).toString('base64'),
       }],
     })
 
