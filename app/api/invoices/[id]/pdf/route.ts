@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const settingsResult = await sql`SELECT * FROM settings WHERE id = 'company_settings'`
     const settings = settingsResult.rows[0] || {}
 
-    const invoice: Invoice = {
+    const invoice = {
       ...inv,
       subtotal: parseFloat(inv.subtotal),
       tax_rate: parseFloat(inv.tax_rate),
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         unit_price: parseFloat(i.unit_price),
         total_price: parseFloat(i.total_price),
       }))
-    }
+    } as Invoice
 
     const settingsObj: Settings = {
       id: settings.id || 'company_settings',
