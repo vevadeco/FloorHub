@@ -31,7 +31,7 @@ export default function CommissionsPage() {
     else { const d = await res.json(); toast.error(d.error ?? 'Failed') }
   }
 
-  const employees = [...new Map(commissions.map(c => [c.employee_id, c.employee_name])).entries()]
+  const employees = Array.from(new Map(commissions.map((c: any) => [c.employee_id, c.employee_name])).entries())
   const filtered = commissions.filter(c => (empFilter === 'all' || c.employee_id === empFilter) && (statusFilter === 'all' || c.status === statusFilter))
   const totalUnpaid = commissions.filter(c => c.status === 'unpaid').reduce((s, c) => s + Number(c.commission_amount), 0)
   const totalPaid = commissions.filter(c => c.status === 'paid').reduce((s, c) => s + Number(c.commission_amount), 0)
