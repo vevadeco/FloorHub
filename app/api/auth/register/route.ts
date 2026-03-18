@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs'
 import { sql, generateId } from '@/lib/db'
 import { signToken, setAuthCookie } from '@/lib/auth'
 
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

@@ -4,6 +4,8 @@ import { sql } from '@/lib/db'
 import { generateInvoicePDF } from '@/lib/pdf'
 import type { Invoice, Settings } from '@/types'
 
+export const runtime = 'nodejs'
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await getAuthUser(request)

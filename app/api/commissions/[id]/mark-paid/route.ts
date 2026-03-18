@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { sql, generateId } from '@/lib/db'
 import { getAuthUser, requireOwner, AuthError, ForbiddenError } from '@/lib/auth'

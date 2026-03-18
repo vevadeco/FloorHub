@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs'
 import { getAuthUser, AuthError } from '@/lib/auth'
 import { sql } from '@/lib/db'
 
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const authUser = await getAuthUser(request)

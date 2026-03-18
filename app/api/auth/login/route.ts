@@ -4,6 +4,8 @@ import { sql } from '@/lib/db'
 import { signToken, setAuthCookie } from '@/lib/auth'
 import type { Role } from '@/types'
 
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

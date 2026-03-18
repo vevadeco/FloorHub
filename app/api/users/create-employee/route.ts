@@ -3,6 +3,8 @@ import { sql, generateId } from '@/lib/db'
 import { getAuthUser, requireOwner, AuthError, ForbiddenError, ValidationError } from '@/lib/auth'
 import bcrypt from 'bcryptjs'
 
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser(request)

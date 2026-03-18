@@ -5,6 +5,8 @@ import { generateInvoicePDF } from '@/lib/pdf'
 import { Resend } from 'resend'
 import type { Invoice, Settings } from '@/types'
 
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await getAuthUser(request)
