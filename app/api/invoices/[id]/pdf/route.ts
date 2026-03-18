@@ -24,7 +24,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       discount: parseFloat(inv.discount),
       total: parseFloat(inv.total),
       items: itemsResult.rows.map(i => ({
-        ...i,
+        id: i.id,
+        product_id: i.product_id,
+        product_name: i.product_name,
+        boxes_needed: i.boxes_needed,
+        cost_price: i.cost_price ? parseFloat(i.cost_price) : undefined,
         sqft_needed: parseFloat(i.sqft_needed),
         sqft_per_box: parseFloat(i.sqft_per_box),
         unit_price: parseFloat(i.unit_price),
