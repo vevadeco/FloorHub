@@ -51,7 +51,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const pdfBuffer = await generateInvoicePDF(invoice, settingsObj)
 
-    return new Response(pdfBuffer.buffer as ArrayBuffer, {
+    return new Response(pdfBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${inv.invoice_number}.pdf"`,

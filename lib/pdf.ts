@@ -118,8 +118,11 @@ function InvoicePDF({ invoice, settings }: { invoice: Invoice; settings: Setting
   )
 }
 
-export async function generateInvoicePDF(invoice: Invoice, settings: Settings): Promise<Uint8Array> {
+export async function generateInvoicePDF(invoice: Invoice, settings: Settings): Promise<ArrayBuffer> {
   const element = React.createElement(InvoicePDF, { invoice, settings })
   const buffer = await renderToBuffer(element)
-  return new Uint8Array(buffer)
+  // Copy into a standalone ArrayBuffer (Node Buffer shares a pooled ArrayBufferLike)
+  const ab = new ArrayBuffer(buffer.length)
+  new Uint8Array(ab).set(buffer)
+  return ab
 }
