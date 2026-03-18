@@ -89,7 +89,7 @@ export default function EmployeesPage() {
                 <TableCell>
                   {commEdit?.id === u.id ? (
                     <div className="flex items-center gap-1">
-                      <Input type="number" min="0" max="100" step="0.1" value={commEdit.value} onChange={e => setCommEdit({ ...commEdit, value: e.target.value })} className="w-20 h-7 text-sm" />
+                      <Input type="number" min="0" max="100" step="0.1" value={commEdit!.value} onChange={e => setCommEdit({ ...commEdit!, value: e.target.value })} className="w-20 h-7 text-sm" />
                       <span className="text-sm text-muted-foreground">%</span>
                       <Button size="sm" className="h-7 text-xs px-2" onClick={() => saveCommission(u.id)}>Save</Button>
                       <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setCommEdit(null)}>✕</Button>
