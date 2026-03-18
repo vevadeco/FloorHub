@@ -1,13 +1,18 @@
-import { sql } from '@vercel/postgres'
+import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 
-export { sql }
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || ''
+const _sql: NeonQueryFunction<false, false> = neon(connectionString)
 
-export async function initSchema() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS licensed_domains (
-      id SERIAL PRIMARY KEY,
-      domain TEXT NOT NULL UNIQUE,
-      added_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `
+export const sql = new Proxy(_sql, {
+  apply(target, _thisArg, args) {
+    const result = Reflect.apply(target, _thisArg, args)
+    if (result && typeof result.then === 'function') {
+      return result.then((rows: unknown[]) => ({ rows, rowCount: rows.length }))
+    }
+    return result
+  },
+}) as unknown as (strings: TemplateStringsArray, ...values: unknown[]) => Promise<{ rows: Record<string, unknown>[]; rowCount: number }>
+
+export function generateId(): string {
+  return crypto.randomUUID()
 }
