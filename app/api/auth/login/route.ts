@@ -21,15 +21,15 @@ export async function POST(request: NextRequest) {
     `
     const user = result.rows[0]
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user || !(await bcrypt.compare(password, user.password as string))) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
     const token = await signToken({
-      user_id: user.id,
-      email: user.email,
+      user_id: user.id as string,
+      email: user.email as string,
       role: user.role as Role,
-      name: user.name,
+      name: user.name as string,
     })
 
     const response = NextResponse.json({
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         name: user.name,
         role: user.role,
-        commission_rate: parseFloat(user.commission_rate),
+        commission_rate: parseFloat(user.commission_rate as string),
       }
     })
     setAuthCookie(response, token)
