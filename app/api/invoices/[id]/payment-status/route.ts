@@ -10,7 +10,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const sessionId = searchParams.get('session_id')
 
     if (sessionId) {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2024-12-18.acacia' })
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-02-24.acacia' })
       const session = await stripe.checkout.sessions.retrieve(sessionId)
 
       if (session.payment_status === 'paid') {

@@ -11,7 +11,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (!invResult.rows[0]) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     const inv = invResult.rows[0]
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2024-12-18.acacia' })
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-02-24.acacia' })
 
     const baseUrl = request.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
 

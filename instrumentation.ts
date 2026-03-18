@@ -15,7 +15,6 @@ async function seedAdminUser() {
 
   try {
     const { sql, generateId } = await import('./lib/db')
-    const { signToken } = await import('./lib/auth')
 
     const countResult = await sql`SELECT COUNT(*) as count FROM users`
     if (parseInt(countResult.rows[0].count) > 0) return
@@ -29,9 +28,6 @@ async function seedAdminUser() {
       VALUES (${userId}, ${email}, ${name}, 'owner', ${hashedPassword}, 0.0)
     `
     console.log(`[FloorHub] Admin user seeded: ${email}`)
-
-    // suppress unused import warning
-    void signToken
   } catch (err) {
     console.error('[FloorHub] Failed to seed admin user:', err)
   }
