@@ -41,7 +41,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: 'Total Revenue', value: fmt(stats?.total_revenue), icon: DollarSign, color: 'bg-green-100 text-green-600' },
+          { title: 'Revenue Collected', value: fmt(stats?.total_revenue), icon: DollarSign, color: 'bg-green-100 text-green-600' },
           { title: 'Net Income', value: fmt(stats?.net_income), icon: stats?.net_income >= 0 ? TrendingUp : TrendingDown, color: stats?.net_income >= 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600' },
           { title: 'New Leads', value: stats?.new_leads_count ?? 0, icon: Target, color: 'bg-orange-100 text-orange-600' },
           { title: 'Pending Invoices', value: stats?.pending_invoices ?? 0, icon: FileText, color: 'bg-blue-100 text-blue-600' },
