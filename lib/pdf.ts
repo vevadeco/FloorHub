@@ -75,7 +75,7 @@ function InvoicePDF({ invoice, settings }: { invoice: Invoice; settings: Setting
           React.createElement(Text, { style: styles.col1 }, 'Product'),
           React.createElement(Text, { style: styles.col2 }, 'Sq Ft'),
           React.createElement(Text, { style: styles.col3 }, 'Boxes'),
-          React.createElement(Text, { style: styles.col4 }, 'Unit Price'),
+          React.createElement(Text, { style: styles.col4 }, 'Price/Sq Ft'),
           React.createElement(Text, { style: styles.col5 }, 'Total'),
         ),
         ...invoice.items.map((item, i) =>

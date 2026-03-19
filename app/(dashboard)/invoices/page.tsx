@@ -61,11 +61,22 @@ export default function InvoicesPage() {
     const item = { ...next[idx] }
     if (field === 'product_id') {
       const p = products.find((p: any) => p.id === value)
-      if (p) { item.product_id = value; item.product_name = p.name; item.sqft_per_box = p.sqft_per_box; item.unit_price = p.selling_price
-        if (item.sqft_needed) { item.boxes_needed = Math.ceil(parseFloat(item.sqft_needed) / p.sqft_per_box); item.total_price = item.boxes_needed * p.selling_price } }
+      if (p) {
+        item.product_id = value
+        item.product_name = p.name
+        item.sqft_per_box = p.sqft_per_box
+        item.unit_price = p.selling_price  // price per sq ft
+        if (item.sqft_needed) {
+          item.boxes_needed = Math.ceil(parseFloat(item.sqft_needed) / p.sqft_per_box)
+          item.total_price = parseFloat(item.sqft_needed) * p.selling_price
+        }
+      }
     } else if (field === 'sqft_needed') {
       item.sqft_needed = value
-      if (item.sqft_per_box > 0 && value) { item.boxes_needed = Math.ceil(parseFloat(value) / item.sqft_per_box); item.total_price = item.boxes_needed * item.unit_price }
+      if (item.sqft_per_box > 0 && value) {
+        item.boxes_needed = Math.ceil(parseFloat(value) / item.sqft_per_box)
+        item.total_price = parseFloat(value) * item.unit_price
+      }
     }
     next[idx] = item; setItems(next)
   }

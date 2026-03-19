@@ -145,7 +145,7 @@ function InvoiceDetail() {
           <Card>
             <CardHeader><CardTitle className="font-heading text-lg">Items</CardTitle></CardHeader>
             <CardContent className="p-0"><div className="overflow-x-auto"><Table>
-              <TableHeader><TableRow className="bg-muted/50"><TableHead>Product</TableHead><TableHead className="text-right">Sq Ft</TableHead><TableHead className="text-right">Boxes</TableHead><TableHead className="text-right">Unit Price</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow className="bg-muted/50"><TableHead>Product</TableHead><TableHead className="text-right">Sq Ft</TableHead><TableHead className="text-right">Boxes</TableHead><TableHead className="text-right">Price/Sq Ft</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
               <TableBody>{invoice.items?.map((item: any, i: number) => (
                 <TableRow key={i}>
                   <TableCell><p className="font-medium">{item.product_name}</p><p className="text-xs text-muted-foreground">{item.sqft_per_box} sq ft/box</p></TableCell>
