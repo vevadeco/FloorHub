@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { Loader2, Upload, Building2, Lock, Facebook, Image } from 'lucide-react'
+import { Loader2, Upload, Building2, Lock, Facebook, Image, Download, DatabaseBackup } from 'lucide-react'
 import type { Settings } from '@/types'
 
 export default function SettingsPage() {
@@ -17,7 +17,10 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' })
+  const [exportingStore, setExportingStore] = useState(false)
+  const [importingStore, setImportingStore] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const importRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetch('/api/settings')
@@ -82,6 +85,54 @@ export default function SettingsPage() {
       toast.error(d.error ?? 'Failed to change password')
     }
     setChangingPassword(false)
+  }
+
+  const handleExportStore = async () => {
+    setExportingStore(true)
+    try {
+      const res = await fetch('/api/store/export')
+      if (!res.ok) { const d = await res.json(); toast.error(d.error ?? 'Export failed'); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `floorhub-export-${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Store data exported')
+    } finally {
+      setExportingStore(false)
+    }
+  }
+
+  const handleImportStore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!confirm('This will overwrite existing data with matching IDs. Continue?')) {
+      e.target.value = ''; return
+    }
+    setImportingStore(true)
+    try {
+      const text = await file.text()
+      const json = JSON.parse(text)
+      const res = await fetch('/api/store/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(json),
+      })
+      const d = await res.json()
+      if (res.ok) {
+        const total = Object.values(d.results as Record<string, number>).reduce((s, n) => s + n, 0)
+        toast.success(`Import complete — ${total} records restored`)
+      } else {
+        toast.error(d.error ?? 'Import failed')
+      }
+    } catch {
+      toast.error('Invalid file — could not parse JSON')
+    } finally {
+      setImportingStore(false)
+      e.target.value = ''
+    }
   }
 
   if (loading) return (
@@ -278,6 +329,36 @@ export default function SettingsPage() {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Data Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading flex items-center gap-2">
+            <DatabaseBackup className="h-5 w-5 text-accent" />
+            Data Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Export Store Data</p>
+            <p className="text-xs text-muted-foreground">Download a full backup of all store data including invoices, customers, products, expenses, and more as a JSON file.</p>
+            <Button variant="outline" onClick={handleExportStore} disabled={exportingStore}>
+              {exportingStore ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Export All Data
+            </Button>
+          </div>
+          <Separator />
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Import Store Data</p>
+            <p className="text-xs text-muted-foreground">Restore data from a previously exported JSON file. Existing records with matching IDs will be overwritten.</p>
+            <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImportStore} />
+            <Button variant="outline" onClick={() => importRef.current?.click()} disabled={importingStore}>
+              {importingStore ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+              Import Data
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
