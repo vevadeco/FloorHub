@@ -67,9 +67,9 @@ export default function InvoicesPage() {
         item.sqft_per_box = p.sqft_per_box
         item.unit_price = p.selling_price  // price per sq ft
         if (item.sqft_needed) {
-          item.boxes_needed = Math.ceil(parseFloat(item.sqft_needed) / p.sqft_per_box)
-          item.sqft_needed = item.boxes_needed * p.sqft_per_box
-          item.total_price = item.sqft_needed * p.selling_price
+          const sqft = parseFloat(item.sqft_needed)
+          item.boxes_needed = Math.ceil(sqft / p.sqft_per_box)
+          item.total_price = sqft * p.selling_price
         }
       }
     } else if (field === 'sqft_needed') {
@@ -77,8 +77,7 @@ export default function InvoicesPage() {
       item.sqft_needed = value
       if (item.sqft_per_box > 0 && sqft) {
         item.boxes_needed = Math.ceil(sqft / item.sqft_per_box)
-        item.sqft_needed = item.boxes_needed * item.sqft_per_box
-        item.total_price = item.sqft_needed * item.unit_price
+        item.total_price = sqft * item.unit_price
       }
     } else if (field === 'boxes_needed') {
       const boxes = parseInt(value) || 0
@@ -180,7 +179,7 @@ export default function InvoicesPage() {
                           <Input type="number" step="0.01" value={item.sqft_needed} onChange={e => updateItem(idx, 'sqft_needed', e.target.value)} placeholder="0.00" />
                         </div>
                         <div className="col-span-4 md:col-span-2 space-y-1">
-                          <Label className="text-xs">Boxes</Label>
+                          <Label className="text-xs">Boxes (↑ rounded up)</Label>
                           <Input type="number" min="0" step="1" value={item.boxes_needed || ''} onChange={e => updateItem(idx, 'boxes_needed', e.target.value)} placeholder="0" />
                         </div>
                         <div className="col-span-4 md:col-span-2 space-y-1">
