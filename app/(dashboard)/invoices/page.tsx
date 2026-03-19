@@ -68,14 +68,24 @@ export default function InvoicesPage() {
         item.unit_price = p.selling_price  // price per sq ft
         if (item.sqft_needed) {
           item.boxes_needed = Math.ceil(parseFloat(item.sqft_needed) / p.sqft_per_box)
-          item.total_price = parseFloat(item.sqft_needed) * p.selling_price
+          item.sqft_needed = item.boxes_needed * p.sqft_per_box
+          item.total_price = item.sqft_needed * p.selling_price
         }
       }
     } else if (field === 'sqft_needed') {
+      const sqft = parseFloat(value) || 0
       item.sqft_needed = value
-      if (item.sqft_per_box > 0 && value) {
-        item.boxes_needed = Math.ceil(parseFloat(value) / item.sqft_per_box)
-        item.total_price = parseFloat(value) * item.unit_price
+      if (item.sqft_per_box > 0 && sqft) {
+        item.boxes_needed = Math.ceil(sqft / item.sqft_per_box)
+        item.sqft_needed = item.boxes_needed * item.sqft_per_box
+        item.total_price = item.sqft_needed * item.unit_price
+      }
+    } else if (field === 'boxes_needed') {
+      const boxes = parseInt(value) || 0
+      item.boxes_needed = boxes
+      if (item.sqft_per_box > 0) {
+        item.sqft_needed = boxes * item.sqft_per_box
+        item.total_price = item.sqft_needed * item.unit_price
       }
     }
     next[idx] = item; setItems(next)
@@ -158,14 +168,25 @@ export default function InvoicesPage() {
                   {items.length === 0 ? <div className="text-center py-8 bg-muted/30 rounded-lg border-2 border-dashed"><p className="text-muted-foreground mb-2">No items</p><Button type="button" variant="outline" size="sm" onClick={addItem}><Plus className="h-4 w-4 mr-1" />Add Item</Button></div>
                     : <div className="space-y-3">{items.map((item, idx) => (
                       <div key={idx} className="grid grid-cols-12 gap-2 items-end p-3 bg-muted/30 rounded-lg">
-                        <div className="col-span-12 md:col-span-4 space-y-1"><Label className="text-xs">Product</Label>
+                        <div className="col-span-12 md:col-span-3 space-y-1"><Label className="text-xs">Product</Label>
                           <Select value={item.product_id} onValueChange={v => updateItem(idx, 'product_id', v)}>
                             <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
                             <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                           </Select>
+                          {item.sqft_per_box > 0 && <p className="text-xs text-muted-foreground">{item.sqft_per_box} sq ft/box</p>}
                         </div>
-                        <div className="col-span-4 md:col-span-2 space-y-1"><Label className="text-xs">Sq Ft</Label><Input type="number" step="0.01" value={item.sqft_needed} onChange={e => updateItem(idx, 'sqft_needed', e.target.value)} placeholder="0.00" /></div>
-                        <div className="col-span-4 md:col-span-2 space-y-1"><Label className="text-xs">Boxes</Label><Input value={item.boxes_needed || 0} readOnly className="bg-muted" /></div>
+                        <div className="col-span-4 md:col-span-2 space-y-1">
+                          <Label className="text-xs">Sq Ft Needed</Label>
+                          <Input type="number" step="0.01" value={item.sqft_needed} onChange={e => updateItem(idx, 'sqft_needed', e.target.value)} placeholder="0.00" />
+                        </div>
+                        <div className="col-span-4 md:col-span-2 space-y-1">
+                          <Label className="text-xs">Boxes</Label>
+                          <Input type="number" min="0" step="1" value={item.boxes_needed || ''} onChange={e => updateItem(idx, 'boxes_needed', e.target.value)} placeholder="0" />
+                        </div>
+                        <div className="col-span-4 md:col-span-2 space-y-1">
+                          <Label className="text-xs">Sq Ft (rounded)</Label>
+                          <Input value={item.sqft_per_box > 0 ? Number(item.sqft_needed).toFixed(2) : '—'} readOnly className="bg-muted text-xs" />
+                        </div>
                         <div className="col-span-3 md:col-span-2 space-y-1"><Label className="text-xs">Total</Label><Input value={fmt(item.total_price || 0)} readOnly className="bg-muted font-medium" /></div>
                         <div className="col-span-1"><Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => setItems(items.filter((_, i) => i !== idx))}><span className="text-lg">×</span></Button></div>
                       </div>
