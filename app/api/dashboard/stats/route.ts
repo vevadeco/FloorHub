@@ -12,10 +12,12 @@ export async function GET(request: NextRequest) {
       sql`SELECT COUNT(*) as v FROM customers`,
       sql`SELECT COUNT(*) as v FROM leads`,
       sql`SELECT COUNT(*) as v FROM leads WHERE status='new'`,
-      sql`SELECT COALESCE(SUM(total),0) as v FROM invoices WHERE is_estimate=FALSE AND status='paid'`,
-      sql`SELECT COUNT(*) as v FROM invoices WHERE is_estimate=FALSE AND status IN ('draft','sent')`,
+      sql`SELECT COALESCE(SUM(total),0) as v FROM invoices WHERE is_estimate = false AND status = 'paid'`,
+      sql`SELECT COUNT(*) as v FROM invoices WHERE is_estimate = false AND status IN ('draft','sent')`,
       sql`SELECT COALESCE(SUM(amount),0) as v FROM expenses`,
-      sql`SELECT id, invoice_number, customer_name, total, status, created_at FROM invoices ORDER BY created_at DESC LIMIT 5`,
+      sql`SELECT i.id, i.invoice_number, i.customer_name, i.total, i.status, i.created_at, u.name as created_by_name
+          FROM invoices i LEFT JOIN users u ON i.created_by = u.id
+          ORDER BY i.created_at DESC LIMIT 5`,
       sql`SELECT id, name, status, source, project_type, created_at FROM leads ORDER BY created_at DESC LIMIT 5`,
     ])
 

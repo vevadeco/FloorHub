@@ -18,11 +18,20 @@ export async function GET(request: NextRequest) {
 
     let invoices
     if (isEstimate === 'true') {
-      invoices = await sql`SELECT * FROM invoices WHERE is_estimate = true ORDER BY created_at DESC`
+      invoices = await sql`
+        SELECT i.*, u.name as created_by_name
+        FROM invoices i LEFT JOIN users u ON i.created_by = u.id
+        WHERE i.is_estimate = true ORDER BY i.created_at DESC`
     } else if (isEstimate === 'false') {
-      invoices = await sql`SELECT * FROM invoices WHERE is_estimate = false ORDER BY created_at DESC`
+      invoices = await sql`
+        SELECT i.*, u.name as created_by_name
+        FROM invoices i LEFT JOIN users u ON i.created_by = u.id
+        WHERE i.is_estimate = false ORDER BY i.created_at DESC`
     } else {
-      invoices = await sql`SELECT * FROM invoices ORDER BY created_at DESC`
+      invoices = await sql`
+        SELECT i.*, u.name as created_by_name
+        FROM invoices i LEFT JOIN users u ON i.created_by = u.id
+        ORDER BY i.created_at DESC`
     }
 
     return NextResponse.json(invoices.rows.map(r => ({

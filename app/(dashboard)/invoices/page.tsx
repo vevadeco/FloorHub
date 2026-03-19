@@ -107,6 +107,16 @@ export default function InvoicesPage() {
     else { const d = await res.json(); toast.error(d.error ?? 'Failed') }
   }
 
+  const handleStatusChange = async (id: string, status: string) => {
+    const res = await fetch(`/api/invoices/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    if (res.ok) { toast.success('Status updated'); load() }
+    else { const d = await res.json(); toast.error(d.error ?? 'Failed') }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this?')) return
     const res = await fetch(`/api/invoices/${id}`, { method: 'DELETE' })
@@ -114,16 +124,34 @@ export default function InvoicesPage() {
     else { const d = await res.json(); toast.error(d.error ?? 'Failed') }
   }
 
-  const renderTable = (data: any[], type: string) => (
+  const statusColors: Record<string, string> = {
+    paid: 'bg-green-100 text-green-700',
+    sent: 'bg-blue-100 text-blue-700',
+    cancelled: 'bg-red-100 text-red-700',
+    draft: 'bg-stone-100 text-stone-700',
+  }
+  const invoiceStatuses = ['draft', 'sent', 'paid', 'cancelled']
+
+  const renderTable = (data: any[]) => (
     <div className="overflow-x-auto"><Table>
-      <TableHeader><TableRow className="bg-muted/50"><TableHead>Number</TableHead><TableHead>Customer</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+      <TableHeader><TableRow className="bg-muted/50"><TableHead>Number</TableHead><TableHead>Customer</TableHead><TableHead>Created By</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
       <TableBody>{data.map(item => (
         <TableRow key={item.id}>
           <TableCell className="font-medium font-mono text-sm">{item.invoice_number}</TableCell>
           <TableCell>{item.customer_name}</TableCell>
+          <TableCell className="text-muted-foreground text-sm">{item.created_by_name || '—'}</TableCell>
           <TableCell className="text-muted-foreground">{fmtDate(item.created_at)}</TableCell>
           <TableCell className="text-right tabular-nums font-medium">{fmt(item.total)}</TableCell>
-          <TableCell><span className={`text-xs px-2 py-1 rounded-full ${item.status === 'paid' ? 'bg-green-100 text-green-700' : item.status === 'sent' ? 'bg-blue-100 text-blue-700' : 'bg-stone-100 text-stone-700'}`}>{item.status}</span></TableCell>
+          <TableCell>
+            <Select value={item.status} onValueChange={v => handleStatusChange(item.id, v)}>
+              <SelectTrigger className={`h-7 text-xs w-28 border-0 px-2 ${statusColors[item.status] ?? statusColors.draft}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {invoiceStatuses.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </TableCell>
           <TableCell className="text-right"><div className="flex justify-end gap-1">
             <Button variant="ghost" size="icon" asChild><Link href={`/invoices/${item.id}`}><Eye className="h-4 w-4" /></Link></Button>
             <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
@@ -212,8 +240,8 @@ export default function InvoicesPage() {
       <Card><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" /></div></CardContent></Card>
       <Tabs defaultValue="invoices">
         <TabsList><TabsTrigger value="invoices">Invoices ({filteredInv.length})</TabsTrigger><TabsTrigger value="estimates">Estimates ({filteredEst.length})</TabsTrigger></TabsList>
-        <TabsContent value="invoices"><Card><CardContent className="p-0">{loading ? <div className="p-8 text-center text-muted-foreground">Loading...</div> : filteredInv.length === 0 ? <div className="p-12 text-center"><FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="font-medium text-lg mb-1">No invoices found</h3></div> : renderTable(filteredInv, 'invoice')}</CardContent></Card></TabsContent>
-        <TabsContent value="estimates"><Card><CardContent className="p-0">{loading ? <div className="p-8 text-center text-muted-foreground">Loading...</div> : filteredEst.length === 0 ? <div className="p-12 text-center"><Calculator className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="font-medium text-lg mb-1">No estimates found</h3></div> : renderTable(filteredEst, 'estimate')}</CardContent></Card></TabsContent>
+        <TabsContent value="invoices"><Card><CardContent className="p-0">{loading ? <div className="p-8 text-center text-muted-foreground">Loading...</div> : filteredInv.length === 0 ? <div className="p-12 text-center"><FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="font-medium text-lg mb-1">No invoices found</h3></div> : renderTable(filteredInv)}</CardContent></Card></TabsContent>
+        <TabsContent value="estimates"><Card><CardContent className="p-0">{loading ? <div className="p-8 text-center text-muted-foreground">Loading...</div> : filteredEst.length === 0 ? <div className="p-12 text-center"><Calculator className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="font-medium text-lg mb-1">No estimates found</h3></div> : renderTable(filteredEst)}</CardContent></Card></TabsContent>
       </Tabs>
     </div>
   )
