@@ -8,9 +8,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
-import { Plus, Trash2, Pencil, Search, Package } from 'lucide-react'
+import { Plus, Trash2, Pencil, Search, Package, Upload, Download } from 'lucide-react'
 
 const emptyForm = { name: '', sku: '', category: '', cost_price: '', selling_price: '', sqft_per_box: '', stock_boxes: '0', description: '', supplier: '' }
+
+const CSV_HEADERS = ['name', 'sku', 'category', 'cost_price', 'selling_price', 'sqft_per_box', 'stock_boxes', 'description', 'supplier']
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<any[]>([])
@@ -19,9 +21,37 @@ export default function InventoryPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<any>(null)
   const [form, setForm] = useState(emptyForm)
+  const [importing, setImporting] = useState(false)
 
-  const load = () => fetch('/api/products').then(r => r.json()).then(setProducts).finally(() => setLoading(false))
+  const load = () => fetch('/api/products').then(r => r.json()).then(d => setProducts(Array.isArray(d) ? d : [])).finally(() => setLoading(false))
   useEffect(() => { load() }, [])
+
+  const handleExport = () => {
+    const rows = [CSV_HEADERS.join(',')]
+    products.forEach(p => {
+      rows.push(CSV_HEADERS.map(h => {
+        const v = String(p[h] ?? '')
+        return v.includes(',') ? `"${v}"` : v
+      }).join(','))
+    })
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'products.csv'; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    const text = await file.text()
+    const res = await fetch('/api/products/import', { method: 'POST', body: text, headers: { 'Content-Type': 'text/plain' } })
+    const d = await res.json()
+    if (res.ok) { toast.success(`Imported ${d.imported} products${d.skipped ? `, skipped ${d.skipped}` : ''}`); load() }
+    else toast.error(d.error ?? 'Import failed')
+    setImporting(false)
+    e.target.value = ''
+  }
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setDialogOpen(true) }
   const openEdit = (p: any) => { setEditing(p); setForm({ name: p.name, sku: p.sku, category: p.category, cost_price: p.cost_price, selling_price: p.selling_price, sqft_per_box: p.sqft_per_box, stock_boxes: p.stock_boxes, description: p.description, supplier: p.supplier }); setDialogOpen(true) }
@@ -49,24 +79,33 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div><h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight">Inventory</h1><p className="text-muted-foreground mt-1">Manage your flooring products</p></div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button className="bg-accent hover:bg-accent/90" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Add Product</Button></DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle className="font-heading">{editing ? 'Edit Product' : 'Add Product'}</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              {[['name','Name *'], ['sku','SKU *'], ['category','Category *'], ['supplier','Supplier']].map(([k, l]) => (
-                <div key={k} className="space-y-2"><Label>{l}</Label><Input value={(form as any)[k]} onChange={e => setForm({ ...form, [k]: e.target.value })} required={l.includes('*')} /></div>
-              ))}
-              <div className="grid grid-cols-2 gap-4">
-                {[['cost_price','Cost Price *'], ['selling_price','Selling Price *'], ['sqft_per_box','Sq Ft/Box *'], ['stock_boxes','Stock (boxes)']].map(([k, l]) => (
-                  <div key={k} className="space-y-2"><Label>{l}</Label><Input type="number" step="0.01" value={(form as any)[k]} onChange={e => setForm({ ...form, [k]: e.target.value })} required={l.includes('*')} /></div>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={handleExport} disabled={products.length === 0}><Download className="h-4 w-4 mr-2" />Export CSV</Button>
+          <label>
+            <Button variant="outline" asChild disabled={importing}>
+              <span><Upload className="h-4 w-4 mr-2" />{importing ? 'Importing...' : 'Import CSV'}</span>
+            </Button>
+            <input type="file" accept=".csv" className="hidden" onChange={handleImport} />
+          </label>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild><Button className="bg-accent hover:bg-accent/90" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Add Product</Button></DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader><DialogTitle className="font-heading">{editing ? 'Edit Product' : 'Add Product'}</DialogTitle></DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+                {[['name','Name *'], ['sku','SKU *'], ['category','Category *'], ['supplier','Supplier']].map(([k, l]) => (
+                  <div key={k} className="space-y-2"><Label>{l}</Label><Input value={(form as any)[k]} onChange={e => setForm({ ...form, [k]: e.target.value })} required={l.includes('*')} /></div>
                 ))}
-              </div>
-              <div className="space-y-2"><Label>Description</Label><Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
-              <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button type="submit" className="bg-accent hover:bg-accent/90">{editing ? 'Update' : 'Create'}</Button></div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="grid grid-cols-2 gap-4">
+                  {[['cost_price','Cost Price *'], ['selling_price','Selling Price *'], ['sqft_per_box','Sq Ft/Box *'], ['stock_boxes','Stock (boxes)']].map(([k, l]) => (
+                    <div key={k} className="space-y-2"><Label>{l}</Label><Input type="number" step="0.01" value={(form as any)[k]} onChange={e => setForm({ ...form, [k]: e.target.value })} required={l.includes('*')} /></div>
+                  ))}
+                </div>
+                <div className="space-y-2"><Label>Description</Label><Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+                <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button type="submit" className="bg-accent hover:bg-accent/90">{editing ? 'Update' : 'Create'}</Button></div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
       <Card><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" /></div></CardContent></Card>
       <Card><CardContent className="p-0">

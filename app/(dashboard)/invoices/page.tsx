@@ -40,7 +40,10 @@ export default function InvoicesPage() {
       fetch('/api/products').then(r => r.json()),
       fetch('/api/customers').then(r => r.json()),
     ])
-    setInvoices(inv); setEstimates(est); setProducts(prod); setCustomers(cust)
+    setInvoices(Array.isArray(inv) ? inv : [])
+    setEstimates(Array.isArray(est) ? est : [])
+    setProducts(Array.isArray(prod) ? prod : [])
+    setCustomers(Array.isArray(cust) ? cust : [])
     setLoading(false)
   }
   useEffect(() => { load() }, [])
