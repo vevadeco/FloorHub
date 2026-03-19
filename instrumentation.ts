@@ -1,7 +1,11 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const { initSchema } = await import('./lib/schema')
-    await initSchema()
+    try {
+      const { initSchema } = await import('./lib/schema')
+      await initSchema()
+    } catch (err) {
+      console.error('[FloorHub] Schema init failed:', err)
+    }
     await seedAdminUser()
   }
 }
