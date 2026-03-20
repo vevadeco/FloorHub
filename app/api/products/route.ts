@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
       ...r,
       cost_price: parseFloat(r.cost_price),
       selling_price: parseFloat(r.selling_price),
+      min_selling_price: parseFloat(r.min_selling_price ?? '0'),
       sqft_per_box: parseFloat(r.sqft_per_box),
     })))
   } catch (error) {
@@ -24,14 +25,14 @@ export async function POST(request: NextRequest) {
   try {
     await getAuthUser(request)
     const body = await request.json()
-    const { name, sku, category, cost_price, selling_price, sqft_per_box, stock_boxes = 0, description = '', supplier = '' } = body
+    const { name, sku, category, cost_price, selling_price, min_selling_price = 0, sqft_per_box, stock_boxes = 0, description = '', supplier = '' } = body
     if (!name || !sku || !category || cost_price == null || selling_price == null || sqft_per_box == null) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
     const id = generateId()
     await sql`
-      INSERT INTO products (id, name, sku, category, cost_price, selling_price, sqft_per_box, stock_boxes, description, supplier)
-      VALUES (${id}, ${name}, ${sku}, ${category}, ${cost_price}, ${selling_price}, ${sqft_per_box}, ${stock_boxes}, ${description}, ${supplier})
+      INSERT INTO products (id, name, sku, category, cost_price, selling_price, min_selling_price, sqft_per_box, stock_boxes, description, supplier)
+      VALUES (${id}, ${name}, ${sku}, ${category}, ${cost_price}, ${selling_price}, ${min_selling_price}, ${sqft_per_box}, ${stock_boxes}, ${description}, ${supplier})
     `
     const result = await sql`SELECT * FROM products WHERE id = ${id}`
     const r = result.rows[0]
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
       ...r,
       cost_price: parseFloat(r.cost_price),
       selling_price: parseFloat(r.selling_price),
+      min_selling_price: parseFloat(r.min_selling_price ?? '0'),
       sqft_per_box: parseFloat(r.sqft_per_box),
     }, { status: 201 })
   } catch (error) {

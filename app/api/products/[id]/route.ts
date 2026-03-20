@@ -7,10 +7,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     await getAuthUser(request)
     const body = await request.json()
-    const { name, sku, category, cost_price, selling_price, sqft_per_box, stock_boxes = 0, description = '', supplier = '' } = body
+    const { name, sku, category, cost_price, selling_price, min_selling_price = 0, sqft_per_box, stock_boxes = 0, description = '', supplier = '' } = body
     const result = await sql`
       UPDATE products SET name=${name}, sku=${sku}, category=${category}, cost_price=${cost_price},
-      selling_price=${selling_price}, sqft_per_box=${sqft_per_box}, stock_boxes=${stock_boxes},
+      selling_price=${selling_price}, min_selling_price=${min_selling_price}, sqft_per_box=${sqft_per_box}, stock_boxes=${stock_boxes},
       description=${description}, supplier=${supplier}, updated_at=NOW()
       WHERE id=${params.id}
     `
@@ -21,6 +21,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       ...r,
       cost_price: parseFloat(r.cost_price),
       selling_price: parseFloat(r.selling_price),
+      min_selling_price: parseFloat(r.min_selling_price ?? '0'),
       sqft_per_box: parseFloat(r.sqft_per_box),
     })
   } catch (error) {

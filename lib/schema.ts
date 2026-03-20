@@ -223,6 +223,9 @@ export async function initSchema(): Promise<void> {
   // Migration: add is_install_job to invoices
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS is_install_job BOOLEAN NOT NULL DEFAULT FALSE`
 
+  // Migration: add min_selling_price to products
+  await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS min_selling_price NUMERIC(10,2) NOT NULL DEFAULT 0.0`
+
   // installation_jobs
   await sql`
     CREATE TABLE IF NOT EXISTS installation_jobs (

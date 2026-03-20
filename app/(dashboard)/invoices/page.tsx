@@ -26,6 +26,7 @@ export default function InvoicesPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [isEstimate, setIsEstimate] = useState(false)
+  const [userRole, setUserRole] = useState<string>('employee')
   const [selectedCustomer, setSelectedCustomer] = useState('')
   const [customerForm, setCustomerForm] = useState({ name: '', email: '', phone: '', address: '' })
   const [items, setItems] = useState<any[]>([])
@@ -35,16 +36,18 @@ export default function InvoicesPage() {
   const [isInstallJob, setIsInstallJob] = useState(false)
 
   const load = async () => {
-    const [inv, est, prod, cust] = await Promise.all([
+    const [inv, est, prod, cust, me] = await Promise.all([
       fetch('/api/invoices?is_estimate=false').then(r => r.json()),
       fetch('/api/invoices?is_estimate=true').then(r => r.json()),
       fetch('/api/products').then(r => r.json()),
       fetch('/api/customers').then(r => r.json()),
+      fetch('/api/auth/me').then(r => r.json()),
     ])
     setInvoices(Array.isArray(inv) ? inv : [])
     setEstimates(Array.isArray(est) ? est : [])
     setProducts(Array.isArray(prod) ? prod : [])
     setCustomers(Array.isArray(cust) ? cust : [])
+    setUserRole(me?.role ?? 'employee')
     setLoading(false)
   }
   useEffect(() => { load() }, [])
@@ -66,7 +69,8 @@ export default function InvoicesPage() {
         item.product_id = value
         item.product_name = p.name
         item.sqft_per_box = p.sqft_per_box
-        item.unit_price = p.selling_price  // price per sq ft
+        item.unit_price = p.selling_price
+        item.min_selling_price = p.min_selling_price ?? 0
         if (item.sqft_needed) {
           const sqft = parseFloat(item.sqft_needed)
           item.boxes_needed = Math.ceil(sqft / p.sqft_per_box)
@@ -87,6 +91,17 @@ export default function InvoicesPage() {
         item.sqft_needed = boxes * item.sqft_per_box
         item.total_price = item.sqft_needed * item.unit_price
       }
+    } else if (field === 'unit_price') {
+      const price = parseFloat(value) || 0
+      const minPrice = item.min_selling_price ?? 0
+      // Clamp to min if employee and min is set
+      if (userRole !== 'owner' && minPrice > 0 && price < minPrice) {
+        item.unit_price = minPrice
+      } else {
+        item.unit_price = price
+      }
+      const sqft = parseFloat(item.sqft_needed) || 0
+      item.total_price = sqft * item.unit_price
     }
     next[idx] = item; setItems(next)
   }
@@ -212,8 +227,25 @@ export default function InvoicesPage() {
                           <Input type="number" min="0" step="1" value={item.boxes_needed || ''} onChange={e => updateItem(idx, 'boxes_needed', e.target.value)} placeholder="0" />
                         </div>
                         <div className="col-span-4 md:col-span-2 space-y-1">
-                          <Label className="text-xs">Sq Ft (rounded)</Label>
-                          <Input value={item.sqft_per_box > 0 ? Number(item.sqft_needed).toFixed(2) : '—'} readOnly className="bg-muted text-xs" />
+                          <Label className="text-xs">
+                            Price/sqft
+                            {item.min_selling_price > 0 && <span className="text-muted-foreground ml-1">(min ${Number(item.min_selling_price).toFixed(2)})</span>}
+                          </Label>
+                          <Input
+                            type="number" step="0.01"
+                            value={item.unit_price || ''}
+                            onChange={e => updateItem(idx, 'unit_price', e.target.value)}
+                            onBlur={e => {
+                              const price = parseFloat(e.target.value) || 0
+                              const min = item.min_selling_price ?? 0
+                              if (userRole !== 'owner' && min > 0 && price < min) {
+                                toast.error(`Minimum price is $${min.toFixed(2)}/sqft`)
+                                updateItem(idx, 'unit_price', String(min))
+                              }
+                            }}
+                            className={item.min_selling_price > 0 && item.unit_price < item.min_selling_price ? 'border-destructive' : ''}
+                            placeholder="0.00"
+                          />
                         </div>
                         <div className="col-span-3 md:col-span-2 space-y-1"><Label className="text-xs">Total</Label><Input value={fmt(item.total_price || 0)} readOnly className="bg-muted font-medium" /></div>
                         <div className="col-span-1"><Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => setItems(items.filter((_, i) => i !== idx))}><span className="text-lg">×</span></Button></div>

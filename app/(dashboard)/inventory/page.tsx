@@ -10,9 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner'
 import { Plus, Trash2, Pencil, Search, Package, Upload, Download } from 'lucide-react'
 
-const emptyForm = { name: '', sku: '', category: '', cost_price: '', selling_price: '', sqft_per_box: '', stock_boxes: '0', description: '', supplier: '' }
+const emptyForm = { name: '', sku: '', category: '', cost_price: '', selling_price: '', min_selling_price: '', sqft_per_box: '', stock_boxes: '0', description: '', supplier: '' }
 
-const CSV_HEADERS = ['name', 'sku', 'category', 'cost_price', 'selling_price', 'sqft_per_box', 'stock_boxes', 'description', 'supplier']
+const CSV_HEADERS = ['name', 'sku', 'category', 'cost_price', 'selling_price', 'min_selling_price', 'sqft_per_box', 'stock_boxes', 'description', 'supplier']
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<any[]>([])
@@ -54,11 +54,11 @@ export default function InventoryPage() {
   }
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setDialogOpen(true) }
-  const openEdit = (p: any) => { setEditing(p); setForm({ name: p.name, sku: p.sku, category: p.category, cost_price: p.cost_price, selling_price: p.selling_price, sqft_per_box: p.sqft_per_box, stock_boxes: p.stock_boxes, description: p.description, supplier: p.supplier }); setDialogOpen(true) }
+  const openEdit = (p: any) => { setEditing(p); setForm({ name: p.name, sku: p.sku, category: p.category, cost_price: p.cost_price, selling_price: p.selling_price, min_selling_price: p.min_selling_price ?? '', sqft_per_box: p.sqft_per_box, stock_boxes: p.stock_boxes, description: p.description, supplier: p.supplier }); setDialogOpen(true) }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const body = { ...form, cost_price: Number(form.cost_price), selling_price: Number(form.selling_price), sqft_per_box: Number(form.sqft_per_box), stock_boxes: Number(form.stock_boxes) }
+    const body = { ...form, cost_price: Number(form.cost_price), selling_price: Number(form.selling_price), min_selling_price: Number(form.min_selling_price) || 0, sqft_per_box: Number(form.sqft_per_box), stock_boxes: Number(form.stock_boxes) }
     const res = editing
       ? await fetch(`/api/products/${editing.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       : await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -96,7 +96,7 @@ export default function InventoryPage() {
                   <div key={k} className="space-y-2"><Label>{l}</Label><Input value={(form as any)[k]} onChange={e => setForm({ ...form, [k]: e.target.value })} required={l.includes('*')} /></div>
                 ))}
                 <div className="grid grid-cols-2 gap-4">
-                  {[['cost_price','Cost Price *'], ['selling_price','Selling Price *'], ['sqft_per_box','Sq Ft/Box *'], ['stock_boxes','Stock (boxes)']].map(([k, l]) => (
+                  {[['cost_price','Cost Price *'], ['selling_price','Selling Price *'], ['min_selling_price','Min Selling Price'], ['sqft_per_box','Sq Ft/Box *'], ['stock_boxes','Stock (boxes)']].map(([k, l]) => (
                     <div key={k} className="space-y-2"><Label>{l}</Label><Input type="number" step="0.01" value={(form as any)[k]} onChange={e => setForm({ ...form, [k]: e.target.value })} required={l.includes('*')} /></div>
                   ))}
                 </div>
@@ -112,7 +112,7 @@ export default function InventoryPage() {
         {loading ? <div className="p-8 text-center text-muted-foreground">Loading...</div>
           : filtered.length === 0 ? <div className="p-12 text-center"><Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="font-medium text-lg mb-1">No products found</h3></div>
           : <div className="overflow-x-auto"><Table>
-            <TableHeader><TableRow className="bg-muted/50"><TableHead>Name</TableHead><TableHead>SKU</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Cost</TableHead><TableHead className="text-right">Price</TableHead><TableHead className="text-right">Sq Ft/Box</TableHead><TableHead className="text-right">Stock</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow className="bg-muted/50"><TableHead>Name</TableHead><TableHead>SKU</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Cost</TableHead><TableHead className="text-right">Price</TableHead><TableHead className="text-right">Min Price</TableHead><TableHead className="text-right">Sq Ft/Box</TableHead><TableHead className="text-right">Stock</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
             <TableBody>{filtered.map(p => (
               <TableRow key={p.id}>
                 <TableCell className="font-medium">{p.name}</TableCell>
@@ -120,6 +120,7 @@ export default function InventoryPage() {
                 <TableCell>{p.category}</TableCell>
                 <TableCell className="text-right tabular-nums">${Number(p.cost_price).toFixed(2)}</TableCell>
                 <TableCell className="text-right tabular-nums">${Number(p.selling_price).toFixed(2)}</TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">{p.min_selling_price > 0 ? `$${Number(p.min_selling_price).toFixed(2)}` : '—'}</TableCell>
                 <TableCell className="text-right tabular-nums">{Number(p.sqft_per_box).toFixed(2)}</TableCell>
                 <TableCell className="text-right tabular-nums">{p.stock_boxes}</TableCell>
                 <TableCell className="text-right"><div className="flex justify-end gap-1">

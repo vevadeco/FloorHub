@@ -81,6 +81,14 @@ export async function POST(request: NextRequest) {
 
     // Insert items
     for (const item of items) {
+      // Server-side min price enforcement
+      if (item.product_id) {
+        const prod = await sql`SELECT min_selling_price FROM products WHERE id = ${item.product_id}`
+        const minPrice = parseFloat(prod.rows[0]?.min_selling_price ?? '0')
+        if (minPrice > 0 && item.unit_price < minPrice) {
+          return NextResponse.json({ error: `Price for "${item.product_name}" cannot be below minimum selling price of $${minPrice.toFixed(2)}/sqft` }, { status: 400 })
+        }
+      }
       const boxes = Math.ceil(item.sqft_needed / item.sqft_per_box)
       const itemId = generateId()
       await sql`
