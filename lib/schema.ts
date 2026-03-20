@@ -220,6 +220,9 @@ export async function initSchema(): Promise<void> {
   // Migration: add logo_url to settings
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS logo_url TEXT DEFAULT ''`
 
+  // Migration: add is_install_job to invoices
+  await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS is_install_job BOOLEAN NOT NULL DEFAULT FALSE`
+
   // installation_jobs
   await sql`
     CREATE TABLE IF NOT EXISTS installation_jobs (

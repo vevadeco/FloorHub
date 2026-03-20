@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const {
       customer_id, customer_name, customer_email = '', customer_phone = '', customer_address = '',
       items = [], subtotal, tax_rate = 0, tax_amount = 0, discount = 0, total,
-      notes = '', status = 'draft', is_estimate = false
+      notes = '', status = 'draft', is_estimate = false, is_install_job = false
     } = body
 
     if (!customer_name || !items.length) {
@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
     `
 
     await sql`
-      INSERT INTO invoices (id, invoice_number, customer_id, customer_name, customer_email, customer_phone, customer_address, subtotal, tax_rate, tax_amount, discount, total, notes, status, is_estimate, created_by)
-      VALUES (${invoiceId}, ${invoiceNumber}, ${cid}, ${customer_name}, ${customer_email}, ${customer_phone}, ${customer_address}, ${subtotal}, ${tax_rate}, ${tax_amount}, ${discount}, ${total}, ${notes}, ${status}, ${is_estimate}, ${authUser.user_id})
+      INSERT INTO invoices (id, invoice_number, customer_id, customer_name, customer_email, customer_phone, customer_address, subtotal, tax_rate, tax_amount, discount, total, notes, status, is_estimate, is_install_job, created_by)
+      VALUES (${invoiceId}, ${invoiceNumber}, ${cid}, ${customer_name}, ${customer_email}, ${customer_phone}, ${customer_address}, ${subtotal}, ${tax_rate}, ${tax_amount}, ${discount}, ${total}, ${notes}, ${status}, ${is_estimate}, ${is_install_job}, ${authUser.user_id})
     `
 
     // Insert items

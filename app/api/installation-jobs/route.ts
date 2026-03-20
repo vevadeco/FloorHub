@@ -1,27 +1,25 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser, AuthError } from '@/lib/auth'
-import { sql, generateId } from '@/lib/db'
+import { sql } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
     await getAuthUser(request)
-    // Find invoices that have an "install" line item (case-insensitive)
-    const invoicesWithInstall = await sql`
-      SELECT DISTINCT i.id, i.invoice_number, i.customer_name, i.status, i.created_at
+
+    const invoices = await sql`
+      SELECT i.id, i.invoice_number, i.customer_name, i.customer_address, i.customer_phone, i.status, i.total, i.created_at
       FROM invoices i
-      JOIN invoice_items ii ON ii.invoice_id = i.id
-      WHERE LOWER(ii.product_name) LIKE '%install%'
-      AND i.is_estimate = false
+      WHERE i.is_install_job = true AND i.is_estimate = false
       ORDER BY i.created_at DESC
     `
 
-    // Get existing jobs
     const jobs = await sql`SELECT * FROM installation_jobs`
     const jobMap = new Map(jobs.rows.map((j: any) => [j.invoice_id, j]))
 
-    const result = invoicesWithInstall.rows.map((inv: any) => ({
+    const result = invoices.rows.map((inv: any) => ({
       ...inv,
+      total: parseFloat(inv.total),
       job: jobMap.get(inv.id) ?? null,
     }))
 

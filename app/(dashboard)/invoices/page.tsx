@@ -32,6 +32,7 @@ export default function InvoicesPage() {
   const [taxRate, setTaxRate] = useState(0)
   const [discount, setDiscount] = useState(0)
   const [notes, setNotes] = useState('')
+  const [isInstallJob, setIsInstallJob] = useState(false)
 
   const load = async () => {
     const [inv, est, prod, cust] = await Promise.all([
@@ -96,12 +97,12 @@ export default function InvoicesPage() {
     else setCustomerForm({ name: '', email: '', phone: '', address: '' })
   }
 
-  const resetForm = () => { setSelectedCustomer(''); setCustomerForm({ name: '', email: '', phone: '', address: '' }); setItems([]); setTaxRate(0); setDiscount(0); setNotes('') }
+  const resetForm = () => { setSelectedCustomer(''); setCustomerForm({ name: '', email: '', phone: '', address: '' }); setItems([]); setTaxRate(0); setDiscount(0); setNotes(''); setIsInstallJob(false) }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (items.length === 0) { toast.error('Add at least one item'); return }
-    const payload = { customer_id: selectedCustomer || crypto.randomUUID(), customer_name: customerForm.name, customer_email: customerForm.email, customer_phone: customerForm.phone, customer_address: customerForm.address, items: items.map(i => ({ product_id: i.product_id, product_name: i.product_name, sqft_needed: parseFloat(i.sqft_needed), sqft_per_box: i.sqft_per_box, boxes_needed: i.boxes_needed, unit_price: i.unit_price, total_price: i.total_price })), subtotal: calcs.subtotal, tax_rate: taxRate, tax_amount: calcs.taxAmount, discount, total: calcs.total, notes, status: 'draft', is_estimate: isEstimate }
+    const payload = { customer_id: selectedCustomer || crypto.randomUUID(), customer_name: customerForm.name, customer_email: customerForm.email, customer_phone: customerForm.phone, customer_address: customerForm.address, items: items.map(i => ({ product_id: i.product_id, product_name: i.product_name, sqft_needed: parseFloat(i.sqft_needed), sqft_per_box: i.sqft_per_box, boxes_needed: i.boxes_needed, unit_price: i.unit_price, total_price: i.total_price })), subtotal: calcs.subtotal, tax_rate: taxRate, tax_amount: calcs.taxAmount, discount, total: calcs.total, notes, status: 'draft', is_estimate: isEstimate, is_install_job: isInstallJob && !isEstimate }
     const res = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     if (res.ok) { toast.success(`${isEstimate ? 'Estimate' : 'Invoice'} created`); setDialogOpen(false); resetForm(); load() }
     else { const d = await res.json(); toast.error(d.error ?? 'Failed') }
@@ -231,7 +232,23 @@ export default function InvoicesPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end gap-2 pt-4 border-t"><Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button type="submit" className="bg-accent hover:bg-accent/90">Create {isEstimate ? 'Estimate' : 'Invoice'}</Button></div>
+                <div className="flex items-center justify-between pt-2 border-t">
+                  {!isEstimate && (
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isInstallJob}
+                        onChange={e => setIsInstallJob(e.target.checked)}
+                        className="h-4 w-4 rounded border-input accent-accent"
+                      />
+                      <span className="text-sm font-medium">Mark as Installation Job</span>
+                    </label>
+                  )}
+                  <div className="flex gap-2 ml-auto">
+                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                    <Button type="submit" className="bg-accent hover:bg-accent/90">Create {isEstimate ? 'Estimate' : 'Invoice'}</Button>
+                  </div>
+                </div>
               </form>
             </DialogContent>
           </Dialog>
