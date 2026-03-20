@@ -50,20 +50,44 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let step = 'init'
   try {
+    step = 'migration'
+    try {
+      await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS is_install_job BOOLEAN NOT NULL DEFAULT FALSE`
+      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS min_selling_price NUMERIC(10,2) NOT NULL DEFAULT 0.0`
+    } catch (migErr) {
+      console.error('[invoices POST] migration warning:', migErr)
+    }
+
+    step = 'auth'
     const authUser = await getAuthUser(request)
+
+    step = 'parse_body'
     const body = await request.json()
     const {
-      customer_id, customer_name, customer_email = '', customer_phone = '', customer_address = '',
-      items = [], subtotal, tax_rate = 0, tax_amount = 0, discount = 0, total,
-      notes = '', status = 'draft', is_estimate = false, is_install_job = false
+      customer_id,
+      customer_name,
+      customer_email = '',
+      customer_phone = '',
+      customer_address = '',
+      items = [],
+      subtotal,
+      tax_rate = 0,
+      tax_amount = 0,
+      discount = 0,
+      total,
+      notes = '',
+      status = 'draft',
+      is_estimate = false,
+      is_install_job = false,
     } = body
 
     if (!customer_name || !items.length) {
       return NextResponse.json({ error: 'Customer name and items are required' }, { status: 400 })
     }
 
-    // Validate min selling prices BEFORE writing anything
+    step = 'min_price_check'
     for (const item of items) {
       if (item.product_id) {
         try {
@@ -75,7 +99,7 @@ export async function POST(request: NextRequest) {
             }, { status: 400 })
           }
         } catch {
-          // column may not exist yet on first deploy — skip validation
+          // column may not exist yet — skip
         }
       }
     }
@@ -84,37 +108,56 @@ export async function POST(request: NextRequest) {
     const invoiceNumber = generateInvoiceNumber(is_estimate)
     const cid = customer_id || generateId()
 
-    // Upsert customer
+    step = 'upsert_customer'
     await sql`
       INSERT INTO customers (id, name, email, phone, address)
       VALUES (${cid}, ${customer_name}, ${customer_email}, ${customer_phone}, ${customer_address})
-      ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, email=EXCLUDED.email, phone=EXCLUDED.phone, address=EXCLUDED.address
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        email = EXCLUDED.email,
+        phone = EXCLUDED.phone,
+        address = EXCLUDED.address
     `
 
+    step = 'insert_invoice'
     await sql`
-      INSERT INTO invoices (id, invoice_number, customer_id, customer_name, customer_email, customer_phone, customer_address, subtotal, tax_rate, tax_amount, discount, total, notes, status, is_estimate, is_install_job, created_by)
-      VALUES (${invoiceId}, ${invoiceNumber}, ${cid}, ${customer_name}, ${customer_email}, ${customer_phone}, ${customer_address}, ${subtotal}, ${tax_rate}, ${tax_amount}, ${discount}, ${total}, ${notes}, ${status}, ${is_estimate}, ${is_install_job}, ${authUser.user_id})
+      INSERT INTO invoices (
+        id, invoice_number, customer_id, customer_name, customer_email,
+        customer_phone, customer_address, subtotal, tax_rate, tax_amount,
+        discount, total, notes, status, is_estimate, is_install_job, created_by
+      ) VALUES (
+        ${invoiceId}, ${invoiceNumber}, ${cid}, ${customer_name}, ${customer_email},
+        ${customer_phone}, ${customer_address}, ${subtotal}, ${tax_rate}, ${tax_amount},
+        ${discount}, ${total}, ${notes}, ${status}, ${is_estimate}, ${is_install_job}, ${authUser.user_id}
+      )
     `
 
-    // Insert items
+    step = 'insert_items'
     for (const item of items) {
       const boxes = Math.ceil(item.sqft_needed / item.sqft_per_box)
       const itemId = generateId()
       await sql`
-        INSERT INTO invoice_items (id, invoice_id, product_id, product_name, sqft_needed, sqft_per_box, boxes_needed, unit_price, total_price)
-        VALUES (${itemId}, ${invoiceId}, ${item.product_id}, ${item.product_name}, ${item.sqft_needed}, ${item.sqft_per_box}, ${boxes}, ${item.unit_price}, ${item.total_price})
+        INSERT INTO invoice_items (
+          id, invoice_id, product_id, product_name,
+          sqft_needed, sqft_per_box, boxes_needed, unit_price, total_price
+        ) VALUES (
+          ${itemId}, ${invoiceId}, ${item.product_id}, ${item.product_name},
+          ${item.sqft_needed}, ${item.sqft_per_box}, ${boxes}, ${item.unit_price}, ${item.total_price}
+        )
       `
     }
 
-    // Trigger commission if paid
+    step = 'commission'
     if (status === 'paid') {
       const { calculateCommission } = await import('@/lib/commissions')
       await calculateCommission(invoiceId)
     }
 
+    step = 'fetch_result'
     const result = await sql`SELECT * FROM invoices WHERE id = ${invoiceId}`
     const itemsResult = await sql`SELECT * FROM invoice_items WHERE invoice_id = ${invoiceId}`
     const inv = result.rows[0]
+
     return NextResponse.json({
       ...inv,
       subtotal: parseFloat(inv.subtotal),
@@ -128,11 +171,12 @@ export async function POST(request: NextRequest) {
         sqft_per_box: parseFloat(i.sqft_per_box),
         unit_price: parseFloat(i.unit_price),
         total_price: parseFloat(i.total_price),
-      }))
+      })),
     }, { status: 201 })
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: 401 })
-    console.error(error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error(`[invoices POST] failed at step="${step}":`, msg)
+    return NextResponse.json({ error: `[${step}] ${msg}` }, { status: 500 })
   }
 }
