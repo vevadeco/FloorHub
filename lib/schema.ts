@@ -219,4 +219,23 @@ export async function initSchema(): Promise<void> {
 
   // Migration: add logo_url to settings
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS logo_url TEXT DEFAULT ''`
+
+  // installation_jobs
+  await sql`
+    CREATE TABLE IF NOT EXISTS installation_jobs (
+      id TEXT PRIMARY KEY,
+      invoice_id TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+      invoice_number TEXT NOT NULL,
+      customer_name TEXT NOT NULL,
+      contractor_id TEXT,
+      contractor_name TEXT DEFAULT '',
+      contractor_email TEXT DEFAULT '',
+      install_date TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(invoice_id)
+    )
+  `
 }

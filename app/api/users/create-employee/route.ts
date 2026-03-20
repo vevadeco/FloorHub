@@ -1,9 +1,9 @@
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import { sql, generateId } from '@/lib/db'
 import { getAuthUser, requireOwner, AuthError, ForbiddenError, ValidationError } from '@/lib/auth'
 import bcrypt from 'bcryptjs'
-
-export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,11 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, FileText, Users, Package, Target, DollarSign,
-  HardHat, UserCog, TrendingUp, MessageSquare, BarChart2, Settings, LogOut
+  HardHat, UserCog, TrendingUp, MessageSquare, BarChart2, Settings, LogOut, Wrench, Menu, X
 } from 'lucide-react'
 import type { JWTPayload } from '@/types'
 import Image from 'next/image'
@@ -20,6 +21,7 @@ const ownerNav = [
   { href: '/contractors', label: 'Contractors', icon: HardHat },
   { href: '/employees', label: 'Employees', icon: UserCog },
   { href: '/commissions', label: 'Commissions', icon: TrendingUp },
+  { href: '/installation-jobs', label: 'Installation Jobs', icon: Wrench },
   { href: '/messages', label: 'Messages', icon: MessageSquare },
   { href: '/reports', label: 'Reports', icon: BarChart2 },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
@@ -38,13 +40,14 @@ interface SidebarProps {
 export function Sidebar({ user, logoUrl }: SidebarProps) {
   const pathname = usePathname()
   const nav = user.role === 'owner' ? ownerNav : employeeNav
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
     window.location.href = '/login'
   }
 
-  return (
+  const sidebarContent = (
     <aside className="flex flex-col w-64 min-h-screen bg-card border-r">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b">
@@ -54,6 +57,14 @@ export function Sidebar({ user, logoUrl }: SidebarProps) {
           <div className="w-8 h-8 rounded bg-accent flex items-center justify-center text-accent-foreground font-bold text-sm">F</div>
         )}
         <span className="font-heading font-bold text-lg">FloorHub</span>
+        {/* Close button on mobile */}
+        <button
+          className="ml-auto md:hidden text-muted-foreground hover:text-foreground"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close menu"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Nav */}
@@ -64,6 +75,7 @@ export function Sidebar({ user, logoUrl }: SidebarProps) {
             <Link
               key={href}
               href={href}
+              onClick={() => setMobileOpen(false)}
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 active
@@ -93,5 +105,34 @@ export function Sidebar({ user, logoUrl }: SidebarProps) {
         </button>
       </div>
     </aside>
+  )
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <div className="hidden md:flex">{sidebarContent}</div>
+
+      {/* Mobile hamburger button */}
+      <button
+        className="md:hidden fixed top-3 left-4 z-50 p-2 rounded-lg bg-card border shadow-sm text-muted-foreground hover:text-foreground"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <>
+          <div
+            className="md:hidden fixed inset-0 z-40 bg-black/50"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="md:hidden fixed inset-y-0 left-0 z-50 flex">
+            {sidebarContent}
+          </div>
+        </>
+      )}
+    </>
   )
 }
