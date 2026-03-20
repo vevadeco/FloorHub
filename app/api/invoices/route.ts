@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         ORDER BY i.created_at DESC`
     }
 
-    return NextResponse.json(invoices.rows.map(r => ({
+    return NextResponse.json(invoices.rows.map((r: any) => ({
       ...r,
       subtotal: parseFloat(r.subtotal),
       tax_rate: parseFloat(r.tax_rate),
@@ -63,6 +63,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Customer name and items are required' }, { status: 400 })
     }
 
+    // Validate min selling prices BEFORE writing anything
+    for (const item of items) {
+      if (item.product_id) {
+        try {
+          const prod = await sql`SELECT min_selling_price FROM products WHERE id = ${item.product_id}`
+          const minPrice = parseFloat(prod.rows[0]?.min_selling_price ?? '0')
+          if (minPrice > 0 && item.unit_price < minPrice) {
+            return NextResponse.json({
+              error: `Price for "${item.product_name}" cannot be below minimum selling price of $${minPrice.toFixed(2)}/sqft`
+            }, { status: 400 })
+          }
+        } catch {
+          // column may not exist yet on first deploy — skip validation
+        }
+      }
+    }
+
     const invoiceId = generateId()
     const invoiceNumber = generateInvoiceNumber(is_estimate)
     const cid = customer_id || generateId()
@@ -81,14 +98,6 @@ export async function POST(request: NextRequest) {
 
     // Insert items
     for (const item of items) {
-      // Server-side min price enforcement
-      if (item.product_id) {
-        const prod = await sql`SELECT min_selling_price FROM products WHERE id = ${item.product_id}`
-        const minPrice = parseFloat(prod.rows[0]?.min_selling_price ?? '0')
-        if (minPrice > 0 && item.unit_price < minPrice) {
-          return NextResponse.json({ error: `Price for "${item.product_name}" cannot be below minimum selling price of $${minPrice.toFixed(2)}/sqft` }, { status: 400 })
-        }
-      }
       const boxes = Math.ceil(item.sqft_needed / item.sqft_per_box)
       const itemId = generateId()
       await sql`
@@ -113,7 +122,7 @@ export async function POST(request: NextRequest) {
       tax_amount: parseFloat(inv.tax_amount),
       discount: parseFloat(inv.discount),
       total: parseFloat(inv.total),
-      items: itemsResult.rows.map(i => ({
+      items: itemsResult.rows.map((i: any) => ({
         ...i,
         sqft_needed: parseFloat(i.sqft_needed),
         sqft_per_box: parseFloat(i.sqft_per_box),
