@@ -286,7 +286,7 @@ export default function InvoicesPage() {
           </Dialog>
         </div>
       </div>
-      <Card><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" /></div></CardContent></Card>
+      <Card><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by customer name or invoice number..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" /></div></CardContent></Card>
       <Tabs defaultValue="invoices">
         <TabsList><TabsTrigger value="invoices">Invoices ({filteredInv.length})</TabsTrigger><TabsTrigger value="estimates">Estimates ({filteredEst.length})</TabsTrigger></TabsList>
         <TabsContent value="invoices"><Card><CardContent className="p-0">{loading ? <div className="p-8 text-center text-muted-foreground">Loading...</div> : filteredInv.length === 0 ? <div className="p-12 text-center"><FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="font-medium text-lg mb-1">No invoices found</h3></div> : renderTable(filteredInv)}</CardContent></Card></TabsContent>

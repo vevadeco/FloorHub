@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser, requireOwner, AuthError, ForbiddenError } from '@/lib/auth'
-import { sql } from '@/lib/db'
+import { sql, generateId } from '@/lib/db'
 import { calculateCommission } from '@/lib/commissions'
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       tax_amount: parseFloat(inv.tax_amount),
       discount: parseFloat(inv.discount),
       total: parseFloat(inv.total),
-      items: itemsResult.rows.map(i => ({
+      items: itemsResult.rows.map((i: any) => ({
         ...i,
         sqft_needed: parseFloat(i.sqft_needed),
         sqft_per_box: parseFloat(i.sqft_per_box),
@@ -37,29 +37,55 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     await getAuthUser(request)
     const body = await request.json()
-    const { status, notes, customer_name, customer_email, customer_phone, customer_address, subtotal, tax_rate, tax_amount, discount, total } = body
+    const {
+      status, notes,
+      customer_name, customer_email, customer_phone, customer_address,
+      subtotal, tax_rate, tax_amount, discount, total,
+      items // optional: full item replacement
+    } = body
 
-    // Check previous status to detect paid transition
-    const prevResult = await sql`SELECT status FROM invoices WHERE id = ${params.id}`
+    const prevResult = await sql`SELECT status, created_at FROM invoices WHERE id = ${params.id}`
     if (!prevResult.rows[0]) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     const prevStatus = prevResult.rows[0].status
 
+    // 30-day edit window check (only when editing items/financials, not just status)
+    if (items !== undefined) {
+      const createdAt = new Date(prevResult.rows[0].created_at)
+      const daysDiff = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
+      if (daysDiff > 30) {
+        return NextResponse.json({ error: 'Invoices can only be edited within 30 days of creation' }, { status: 403 })
+      }
+    }
+
     await sql`
       UPDATE invoices SET
-        status = COALESCE(${status}, status),
-        notes = COALESCE(${notes}, notes),
-        customer_name = COALESCE(${customer_name}, customer_name),
-        customer_email = COALESCE(${customer_email}, customer_email),
-        customer_phone = COALESCE(${customer_phone}, customer_phone),
-        customer_address = COALESCE(${customer_address}, customer_address),
-        subtotal = COALESCE(${subtotal}, subtotal),
-        tax_rate = COALESCE(${tax_rate}, tax_rate),
-        tax_amount = COALESCE(${tax_amount}, tax_amount),
-        discount = COALESCE(${discount}, discount),
-        total = COALESCE(${total}, total),
+        status = COALESCE(${status ?? null}, status),
+        notes = COALESCE(${notes ?? null}, notes),
+        customer_name = COALESCE(${customer_name ?? null}, customer_name),
+        customer_email = COALESCE(${customer_email ?? null}, customer_email),
+        customer_phone = COALESCE(${customer_phone ?? null}, customer_phone),
+        customer_address = COALESCE(${customer_address ?? null}, customer_address),
+        subtotal = COALESCE(${subtotal ?? null}, subtotal),
+        tax_rate = COALESCE(${tax_rate ?? null}, tax_rate),
+        tax_amount = COALESCE(${tax_amount ?? null}, tax_amount),
+        discount = COALESCE(${discount ?? null}, discount),
+        total = COALESCE(${total ?? null}, total),
         updated_at = NOW()
       WHERE id = ${params.id}
     `
+
+    // Replace items if provided
+    if (items !== undefined) {
+      await sql`DELETE FROM invoice_items WHERE invoice_id = ${params.id}`
+      for (const item of items) {
+        const boxes = Math.ceil(item.sqft_needed / item.sqft_per_box)
+        const itemId = generateId()
+        await sql`
+          INSERT INTO invoice_items (id, invoice_id, product_id, product_name, sqft_needed, sqft_per_box, boxes_needed, unit_price, total_price)
+          VALUES (${itemId}, ${params.id}, ${item.product_id}, ${item.product_name}, ${item.sqft_needed}, ${item.sqft_per_box}, ${boxes}, ${item.unit_price}, ${item.total_price})
+        `
+      }
+    }
 
     // Trigger commission if transitioning to paid
     if (status === 'paid' && prevStatus !== 'paid') {
@@ -76,7 +102,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       tax_amount: parseFloat(inv.tax_amount),
       discount: parseFloat(inv.discount),
       total: parseFloat(inv.total),
-      items: itemsResult.rows.map(i => ({
+      items: itemsResult.rows.map((i: any) => ({
         ...i,
         sqft_needed: parseFloat(i.sqft_needed),
         sqft_per_box: parseFloat(i.sqft_per_box),
