@@ -48,6 +48,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (!prevResult.rows[0]) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     const prevStatus = prevResult.rows[0].status
 
+    // Lazy migration: ensure completed_at column exists
+    await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ`
+
     // 30-day edit window check (only when editing items/financials, not just status)
     if (items !== undefined) {
       const createdAt = new Date(prevResult.rows[0].created_at)

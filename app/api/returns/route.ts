@@ -6,6 +6,11 @@ import { sql, generateId } from '@/lib/db'
 export async function GET(request: NextRequest) {
   try {
     await getAuthUser(request)
+    // Lazy migrations for new columns
+    await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS restocking_fee NUMERIC(10,2) NOT NULL DEFAULT 0.0`
+    await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS net_refund NUMERIC(10,2) NOT NULL DEFAULT 0.0`
+    await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS transaction_reference TEXT DEFAULT ''`
+    await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'`
     const result = await sql`SELECT * FROM returns ORDER BY created_at DESC`
     return NextResponse.json(result.rows)
   } catch (error) {
