@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, FileText, Users, Package, Target, DollarSign,
-  HardHat, UserCog, TrendingUp, MessageSquare, BarChart2, Settings, LogOut, Wrench, Menu, X
+  HardHat, UserCog, TrendingUp, MessageSquare, BarChart2, Settings, LogOut, Wrench, Menu, X, RotateCcw
 } from 'lucide-react'
 import type { JWTPayload } from '@/types'
 import Image from 'next/image'
@@ -22,6 +22,7 @@ const ownerNav = [
   { href: '/employees', label: 'Employees', icon: UserCog },
   { href: '/commissions', label: 'Commissions', icon: TrendingUp },
   { href: '/installation-jobs', label: 'Installation Jobs', icon: Wrench },
+  { href: '/returns', label: 'Returns', icon: RotateCcw },
   { href: '/messages', label: 'Messages', icon: MessageSquare },
   { href: '/reports', label: 'Reports', icon: BarChart2 },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
@@ -30,6 +31,7 @@ const ownerNav = [
 
 const employeeNav = [
   { href: '/invoices', label: 'Invoices', icon: FileText },
+  { href: '/commissions', label: 'My Commissions', icon: TrendingUp },
 ]
 
 interface SidebarProps {

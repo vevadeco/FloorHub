@@ -92,6 +92,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       await calculateCommission(params.id)
     }
 
+    // Set completed_at when transitioning to complete
+    if (status === 'complete' && prevStatus !== 'complete') {
+      await sql`UPDATE invoices SET completed_at = NOW() WHERE id = ${params.id}`
+    }
+
     const result = await sql`SELECT * FROM invoices WHERE id = ${params.id}`
     const itemsResult = await sql`SELECT * FROM invoice_items WHERE invoice_id = ${params.id}`
     const inv = result.rows[0]

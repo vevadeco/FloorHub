@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,81 @@ import { Plus, FileText, Trash2, Search, Eye, Calculator } from 'lucide-react'
 
 const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
+// Address autocomplete using Google Maps Places API
+function AddressAutocomplete({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [open, setOpen] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const fetchSuggestions = useCallback((input: string) => {
+    if (!input || input.length < 3) { setSuggestions([]); return }
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/address/suggestions?query=${encodeURIComponent(input)}`)
+        const data = await res.json()
+        setSuggestions(Array.isArray(data) ? data.map((d: any) => d.full_address ?? d.description ?? d) : [])
+        setOpen(true)
+      } catch { setSuggestions([]) }
+    }, 300)
+  }, [])
+
+  return (
+    <div className="relative">
+      <Input
+        value={value}
+        onChange={e => { onChange(e.target.value); fetchSuggestions(e.target.value) }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Start typing address..."
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && (
+        <ul className="absolute z-50 w-full bg-popover border rounded-md shadow-md mt-1 max-h-48 overflow-y-auto">
+          {suggestions.map((s, i) => (
+            <li key={i} className="px-3 py-2 text-sm cursor-pointer hover:bg-muted" onMouseDown={() => { onChange(s); setOpen(false) }}>{s}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+// Product search combobox — search by name or SKU
+function ProductSearch({ products, value, onSelect }: { products: any[]; value: string; onSelect: (p: any) => void }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const selected = products.find(p => p.id === value)
+
+  const filtered = query.length > 0
+    ? products.filter(p => p.name.toLowerCase().includes(query.toLowerCase()) || p.sku.toLowerCase().includes(query.toLowerCase()))
+    : products.slice(0, 20)
+
+  return (
+    <div className="relative">
+      <Input
+        value={open ? query : (selected ? `${selected.name} (${selected.sku})` : '')}
+        onChange={e => { setQuery(e.target.value); setOpen(true) }}
+        onFocus={() => { setQuery(''); setOpen(true) }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Search by name or SKU..."
+        autoComplete="off"
+      />
+      {open && (
+        <ul className="absolute z-50 w-full bg-popover border rounded-md shadow-md mt-1 max-h-48 overflow-y-auto">
+          {filtered.length === 0
+            ? <li className="px-3 py-2 text-sm text-muted-foreground">No products found</li>
+            : filtered.map((p: any) => (
+              <li key={p.id} className="px-3 py-2 text-sm cursor-pointer hover:bg-muted" onMouseDown={() => { onSelect(p); setOpen(false); setQuery('') }}>
+                <span className="font-medium">{p.name}</span>
+                <span className="text-muted-foreground ml-2 text-xs">{p.sku}</span>
+              </li>
+            ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<any[]>([])
@@ -53,31 +128,28 @@ export default function InvoicesPage() {
   useEffect(() => { load() }, [])
 
   const calcs = useMemo(() => {
-    const subtotal = items.reduce((s, i) => s + (i.total_price || 0), 0)
+    const subtotal = items.reduce((s: number, i: any) => s + (i.total_price || 0), 0)
     const taxAmount = subtotal * (taxRate / 100)
     return { subtotal, taxAmount, total: subtotal + taxAmount - discount }
   }, [items, taxRate, discount])
 
-  const addItem = () => setItems([...items, { product_id: '', product_name: '', sqft_needed: '', sqft_per_box: 0, boxes_needed: 0, unit_price: 0, total_price: 0 }])
+  const addItem = () => setItems([...items, { product_id: '', product_name: '', sqft_needed: '', sqft_per_box: 0, boxes_needed: 0, unit_price: 0, total_price: 0, min_selling_price: 0 }])
+
+  const selectProduct = (idx: number, p: any) => {
+    const next = [...items]
+    const item = { ...next[idx], product_id: p.id, product_name: p.name, sqft_per_box: p.sqft_per_box, unit_price: p.selling_price, min_selling_price: p.min_selling_price ?? 0 }
+    if (item.sqft_needed) {
+      const sqft = parseFloat(item.sqft_needed)
+      item.boxes_needed = Math.ceil(sqft / p.sqft_per_box)
+      item.total_price = sqft * p.selling_price
+    }
+    next[idx] = item; setItems(next)
+  }
 
   const updateItem = (idx: number, field: string, value: string) => {
     const next = [...items]
     const item = { ...next[idx] }
-    if (field === 'product_id') {
-      const p = products.find((p: any) => p.id === value)
-      if (p) {
-        item.product_id = value
-        item.product_name = p.name
-        item.sqft_per_box = p.sqft_per_box
-        item.unit_price = p.selling_price
-        item.min_selling_price = p.min_selling_price ?? 0
-        if (item.sqft_needed) {
-          const sqft = parseFloat(item.sqft_needed)
-          item.boxes_needed = Math.ceil(sqft / p.sqft_per_box)
-          item.total_price = sqft * p.selling_price
-        }
-      }
-    } else if (field === 'sqft_needed') {
+    if (field === 'sqft_needed') {
       const sqft = parseFloat(value) || 0
       item.sqft_needed = value
       if (item.sqft_per_box > 0 && sqft) {
@@ -94,7 +166,6 @@ export default function InvoicesPage() {
     } else if (field === 'unit_price') {
       const price = parseFloat(value) || 0
       const minPrice = item.min_selling_price ?? 0
-      // Clamp to min if employee and min is set
       if (userRole !== 'owner' && minPrice > 0 && price < minPrice) {
         item.unit_price = minPrice
       } else {
@@ -117,18 +188,21 @@ export default function InvoicesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (items.length === 0) { toast.error('Add at least one item'); return }
-    const payload = { customer_id: selectedCustomer || crypto.randomUUID(), customer_name: customerForm.name, customer_email: customerForm.email, customer_phone: customerForm.phone, customer_address: customerForm.address, items: items.map(i => ({ product_id: i.product_id, product_name: i.product_name, sqft_needed: parseFloat(i.sqft_needed), sqft_per_box: i.sqft_per_box, boxes_needed: i.boxes_needed, unit_price: i.unit_price, total_price: i.total_price })), subtotal: calcs.subtotal, tax_rate: taxRate, tax_amount: calcs.taxAmount, discount, total: calcs.total, notes, status: 'draft', is_estimate: isEstimate, is_install_job: isInstallJob && !isEstimate }
+    const payload = {
+      customer_id: selectedCustomer || crypto.randomUUID(),
+      customer_name: customerForm.name, customer_email: customerForm.email,
+      customer_phone: customerForm.phone, customer_address: customerForm.address,
+      items: items.map((i: any) => ({ product_id: i.product_id, product_name: i.product_name, sqft_needed: parseFloat(i.sqft_needed), sqft_per_box: i.sqft_per_box, boxes_needed: i.boxes_needed, unit_price: i.unit_price, total_price: i.total_price })),
+      subtotal: calcs.subtotal, tax_rate: taxRate, tax_amount: calcs.taxAmount, discount, total: calcs.total,
+      notes, status: 'draft', is_estimate: isEstimate, is_install_job: isInstallJob && !isEstimate,
+    }
     const res = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     if (res.ok) { toast.success(`${isEstimate ? 'Estimate' : 'Invoice'} created`); setDialogOpen(false); resetForm(); load() }
     else { const d = await res.json(); toast.error(d.error ?? 'Failed') }
   }
 
   const handleStatusChange = async (id: string, status: string) => {
-    const res = await fetch(`/api/invoices/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
+    const res = await fetch(`/api/invoices/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) })
     if (res.ok) { toast.success('Status updated'); load() }
     else { const d = await res.json(); toast.error(d.error ?? 'Failed') }
   }
@@ -145,13 +219,14 @@ export default function InvoicesPage() {
     sent: 'bg-blue-100 text-blue-700',
     cancelled: 'bg-red-100 text-red-700',
     draft: 'bg-stone-100 text-stone-700',
+    complete: 'bg-purple-100 text-purple-700',
   }
-  const invoiceStatuses = ['draft', 'sent', 'paid', 'cancelled']
+  const invoiceStatuses = ['draft', 'sent', 'paid', 'complete', 'cancelled']
 
   const renderTable = (data: any[]) => (
     <div className="overflow-x-auto"><Table>
       <TableHeader><TableRow className="bg-muted/50"><TableHead>Number</TableHead><TableHead>Customer</TableHead><TableHead>Created By</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-      <TableBody>{data.map(item => (
+      <TableBody>{data.map((item: any) => (
         <TableRow key={item.id}>
           <TableCell className="font-medium font-mono text-sm">{item.invoice_number}</TableCell>
           <TableCell>{item.customer_name}</TableCell>
@@ -159,7 +234,7 @@ export default function InvoicesPage() {
           <TableCell className="text-muted-foreground">{fmtDate(item.created_at)}</TableCell>
           <TableCell className="text-right tabular-nums font-medium">{fmt(item.total)}</TableCell>
           <TableCell>
-            <Select value={item.status} onValueChange={v => handleStatusChange(item.id, v)}>
+            <Select value={item.status} onValueChange={(v: string) => handleStatusChange(item.id, v)}>
               <SelectTrigger className={`h-7 text-xs w-28 border-0 px-2 ${statusColors[item.status] ?? statusColors.draft}`}>
                 <SelectValue />
               </SelectTrigger>
@@ -177,54 +252,59 @@ export default function InvoicesPage() {
     </Table></div>
   )
 
-  const filteredInv = invoices.filter(i => i.invoice_number.toLowerCase().includes(search.toLowerCase()) || i.customer_name.toLowerCase().includes(search.toLowerCase()))
-  const filteredEst = estimates.filter(i => i.invoice_number.toLowerCase().includes(search.toLowerCase()) || i.customer_name.toLowerCase().includes(search.toLowerCase()))
+  const filteredInv = invoices.filter((i: any) => i.invoice_number.toLowerCase().includes(search.toLowerCase()) || i.customer_name.toLowerCase().includes(search.toLowerCase()))
+  const filteredEst = estimates.filter((i: any) => i.invoice_number.toLowerCase().includes(search.toLowerCase()) || i.customer_name.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div><h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight">Invoices & Estimates</h1><p className="text-muted-foreground mt-1">Create and manage invoices and estimates</p></div>
         <div className="flex gap-2">
-          <Dialog open={dialogOpen} onOpenChange={open => { setDialogOpen(open); if (!open) resetForm() }}>
+          <Dialog open={dialogOpen} onOpenChange={(open: boolean) => { setDialogOpen(open); if (!open) resetForm() }}>
             <DialogTrigger asChild><Button variant="outline" onClick={() => setIsEstimate(true)}><Calculator className="h-4 w-4 mr-2" />New Estimate</Button></DialogTrigger>
             <DialogTrigger asChild><Button className="bg-accent hover:bg-accent/90" onClick={() => setIsEstimate(false)}><Plus className="h-4 w-4 mr-2" />New Invoice</Button></DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle className="font-heading">Create {isEstimate ? 'Estimate' : 'Invoice'}</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+                {/* Customer */}
                 <div className="space-y-4">
                   <h3 className="font-medium">Customer</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2"><Label>Existing Customer</Label>
-                      <Select value={selectedCustomer || 'new'} onValueChange={v => handleCustomerSelect(v === 'new' ? '' : v)}>
+                      <Select value={selectedCustomer || 'new'} onValueChange={(v: string) => handleCustomerSelect(v === 'new' ? '' : v)}>
                         <SelectTrigger><SelectValue placeholder="Select or new" /></SelectTrigger>
                         <SelectContent><SelectItem value="new">New Customer</SelectItem>{customers.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2"><Label>Name *</Label><Input value={customerForm.name} onChange={e => setCustomerForm({ ...customerForm, name: e.target.value })} required /></div>
-                    <div className="space-y-2"><Label>Email</Label><Input type="email" value={customerForm.email} onChange={e => setCustomerForm({ ...customerForm, email: e.target.value })} /></div>
-                    <div className="space-y-2"><Label>Phone</Label><Input value={customerForm.phone} onChange={e => setCustomerForm({ ...customerForm, phone: e.target.value })} /></div>
-                    <div className="md:col-span-2 space-y-2"><Label>Address</Label><Input value={customerForm.address} onChange={e => setCustomerForm({ ...customerForm, address: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Name *</Label><Input value={customerForm.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomerForm({ ...customerForm, name: e.target.value })} required /></div>
+                    <div className="space-y-2"><Label>Email</Label><Input type="email" value={customerForm.email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomerForm({ ...customerForm, email: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Phone</Label><Input value={customerForm.phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomerForm({ ...customerForm, phone: e.target.value })} /></div>
+                    <div className="md:col-span-2 space-y-2">
+                      <Label>Address</Label>
+                      <AddressAutocomplete value={customerForm.address} onChange={(v: string) => setCustomerForm({ ...customerForm, address: v })} />
+                    </div>
                   </div>
                 </div>
+
+                {/* Items */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between"><h3 className="font-medium">Items</h3><Button type="button" variant="outline" size="sm" onClick={addItem}><Plus className="h-4 w-4 mr-1" />Add Item</Button></div>
-                  {items.length === 0 ? <div className="text-center py-8 bg-muted/30 rounded-lg border-2 border-dashed"><p className="text-muted-foreground mb-2">No items</p><Button type="button" variant="outline" size="sm" onClick={addItem}><Plus className="h-4 w-4 mr-1" />Add Item</Button></div>
-                    : <div className="space-y-3">{items.map((item, idx) => (
+                  {items.length === 0
+                    ? <div className="text-center py-8 bg-muted/30 rounded-lg border-2 border-dashed"><p className="text-muted-foreground mb-2">No items</p><Button type="button" variant="outline" size="sm" onClick={addItem}><Plus className="h-4 w-4 mr-1" />Add Item</Button></div>
+                    : <div className="space-y-3">{items.map((item: any, idx: number) => (
                       <div key={idx} className="grid grid-cols-12 gap-2 items-end p-3 bg-muted/30 rounded-lg">
-                        <div className="col-span-12 md:col-span-3 space-y-1"><Label className="text-xs">Product</Label>
-                          <Select value={item.product_id} onValueChange={v => updateItem(idx, 'product_id', v)}>
-                            <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
-                            <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                          </Select>
+                        <div className="col-span-12 md:col-span-3 space-y-1">
+                          <Label className="text-xs">Product</Label>
+                          <ProductSearch products={products} value={item.product_id} onSelect={(p: any) => selectProduct(idx, p)} />
                           {item.sqft_per_box > 0 && <p className="text-xs text-muted-foreground">{item.sqft_per_box} sq ft/box</p>}
                         </div>
                         <div className="col-span-4 md:col-span-2 space-y-1">
                           <Label className="text-xs">Sq Ft Needed</Label>
-                          <Input type="number" step="0.01" value={item.sqft_needed} onChange={e => updateItem(idx, 'sqft_needed', e.target.value)} placeholder="0.00" />
+                          <Input type="number" step="0.01" value={item.sqft_needed} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateItem(idx, 'sqft_needed', e.target.value)} placeholder="0.00" />
                         </div>
                         <div className="col-span-4 md:col-span-2 space-y-1">
                           <Label className="text-xs">Boxes (↑ rounded up)</Label>
-                          <Input type="number" min="0" step="1" value={item.boxes_needed || ''} onChange={e => updateItem(idx, 'boxes_needed', e.target.value)} placeholder="0" />
+                          <Input type="number" min="0" step="1" value={item.boxes_needed || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateItem(idx, 'boxes_needed', e.target.value)} placeholder="0" />
                         </div>
                         <div className="col-span-4 md:col-span-2 space-y-1">
                           <Label className="text-xs">
@@ -234,8 +314,8 @@ export default function InvoicesPage() {
                           <Input
                             type="number" step="0.01"
                             value={item.unit_price || ''}
-                            onChange={e => updateItem(idx, 'unit_price', e.target.value)}
-                            onBlur={e => {
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateItem(idx, 'unit_price', e.target.value)}
+                            onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
                               const price = parseFloat(e.target.value) || 0
                               const min = item.min_selling_price ?? 0
                               if (userRole !== 'owner' && min > 0 && price < min) {
@@ -243,20 +323,21 @@ export default function InvoicesPage() {
                                 updateItem(idx, 'unit_price', String(min))
                               }
                             }}
-                            className={item.min_selling_price > 0 && item.unit_price < item.min_selling_price ? 'border-destructive' : ''}
                             placeholder="0.00"
                           />
                         </div>
                         <div className="col-span-3 md:col-span-2 space-y-1"><Label className="text-xs">Total</Label><Input value={fmt(item.total_price || 0)} readOnly className="bg-muted font-medium" /></div>
-                        <div className="col-span-1"><Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => setItems(items.filter((_, i) => i !== idx))}><span className="text-lg">×</span></Button></div>
+                        <div className="col-span-1"><Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => setItems(items.filter((_: any, i: number) => i !== idx))}><span className="text-lg">×</span></Button></div>
                       </div>
                     ))}</div>}
                 </div>
+
+                {/* Totals + Notes */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2"><Label>Notes</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} /></div>
+                  <div className="space-y-2"><Label>Notes</Label><Textarea value={notes} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)} rows={4} /></div>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between"><Label>Tax Rate (%)</Label><Input type="number" step="0.01" value={taxRate} onChange={e => setTaxRate(parseFloat(e.target.value) || 0)} className="w-24 text-right" /></div>
-                    <div className="flex items-center justify-between"><Label>Discount ($)</Label><Input type="number" step="0.01" value={discount} onChange={e => setDiscount(parseFloat(e.target.value) || 0)} className="w-24 text-right" /></div>
+                    <div className="flex items-center justify-between"><Label>Tax Rate (%)</Label><Input type="number" step="0.01" value={taxRate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTaxRate(parseFloat(e.target.value) || 0)} className="w-24 text-right" /></div>
+                    <div className="flex items-center justify-between"><Label>Discount ($)</Label><Input type="number" step="0.01" value={discount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDiscount(parseFloat(e.target.value) || 0)} className="w-24 text-right" /></div>
                     <div className="border-t pt-3 space-y-2">
                       <div className="flex justify-between text-sm"><span>Subtotal:</span><span className="tabular-nums">{fmt(calcs.subtotal)}</span></div>
                       <div className="flex justify-between text-sm"><span>Tax:</span><span className="tabular-nums">{fmt(calcs.taxAmount)}</span></div>
@@ -264,15 +345,11 @@ export default function InvoicesPage() {
                     </div>
                   </div>
                 </div>
+
                 <div className="flex items-center justify-between pt-2 border-t">
                   {!isEstimate && (
                     <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={isInstallJob}
-                        onChange={e => setIsInstallJob(e.target.checked)}
-                        className="h-4 w-4 rounded border-input accent-accent"
-                      />
+                      <input type="checkbox" checked={isInstallJob} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setIsInstallJob(e.target.checked)} className="h-4 w-4 rounded border-input accent-accent" />
                       <span className="text-sm font-medium">Mark as Installation Job</span>
                     </label>
                   )}
@@ -286,7 +363,9 @@ export default function InvoicesPage() {
           </Dialog>
         </div>
       </div>
-      <Card><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by customer name or invoice number..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" /></div></CardContent></Card>
+
+      <Card><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by customer name or invoice number..." value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} className="pl-10" /></div></CardContent></Card>
+
       <Tabs defaultValue="invoices">
         <TabsList><TabsTrigger value="invoices">Invoices ({filteredInv.length})</TabsTrigger><TabsTrigger value="estimates">Estimates ({filteredEst.length})</TabsTrigger></TabsList>
         <TabsContent value="invoices"><Card><CardContent className="p-0">{loading ? <div className="p-8 text-center text-muted-foreground">Loading...</div> : filteredInv.length === 0 ? <div className="p-12 text-center"><FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="font-medium text-lg mb-1">No invoices found</h3></div> : renderTable(filteredInv)}</CardContent></Card></TabsContent>

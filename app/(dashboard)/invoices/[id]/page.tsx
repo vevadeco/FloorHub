@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { ArrowLeft, Download, Mail, CreditCard, RefreshCw, FileText, Loader2, Banknote, Trash2, Pencil, Plus } from 'lucide-react'
+import { ArrowLeft, Download, Mail, CreditCard, RefreshCw, FileText, Loader2, Banknote, Trash2, Pencil, Plus, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
@@ -64,6 +64,12 @@ function InvoiceDetail() {
   const canEdit = invoice && !invoice.is_estimate && (() => {
     const days = (Date.now() - new Date(invoice.created_at).getTime()) / (1000 * 60 * 60 * 24)
     return days <= 30
+  })()
+
+  // Check if return is allowed: status=complete and within 30 days of completed_at
+  const canReturn = invoice && invoice.status === 'complete' && (() => {
+    const ref = invoice.completed_at ? new Date(invoice.completed_at) : new Date(invoice.updated_at)
+    return (Date.now() - ref.getTime()) / (1000 * 60 * 60 * 24) <= 30
   })()
 
   const openEditDialog = () => {
@@ -225,6 +231,9 @@ function InvoiceDetail() {
         <div className="flex flex-wrap gap-2">
           {canEdit && (
             <Button variant="outline" onClick={openEditDialog}><Pencil className="h-4 w-4 mr-2" />Edit</Button>
+          )}
+          {canReturn && (
+            <Button variant="outline" onClick={() => router.push(`/returns?invoice=${invoice.invoice_number}`)}><RotateCcw className="h-4 w-4 mr-2" />Create Return</Button>
           )}
           <Button variant="outline" onClick={handleDownloadPDF}><Download className="h-4 w-4 mr-2" />PDF</Button>
           {invoice.customer_email && invoice.status !== 'paid' && <Button variant="outline" onClick={handleSendEmail} disabled={sendingEmail}>{sendingEmail ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}Email</Button>}

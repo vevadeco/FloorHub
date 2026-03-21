@@ -226,6 +226,9 @@ export async function initSchema(): Promise<void> {
   // Migration: add min_selling_price to products
   await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS min_selling_price NUMERIC(10,2) NOT NULL DEFAULT 0.0`
 
+  // Migration: add completed_at to invoices
+  await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ`
+
   // installation_jobs
   await sql`
     CREATE TABLE IF NOT EXISTS installation_jobs (
@@ -242,6 +245,22 @@ export async function initSchema(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(invoice_id)
+    )
+  `
+
+  // returns
+  await sql`
+    CREATE TABLE IF NOT EXISTS returns (
+      id TEXT PRIMARY KEY,
+      invoice_id TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+      invoice_number TEXT NOT NULL,
+      customer_name TEXT NOT NULL,
+      reason TEXT NOT NULL DEFAULT '',
+      notes TEXT DEFAULT '',
+      refund_amount NUMERIC(10,2) NOT NULL DEFAULT 0.0,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_by TEXT DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `
 }
