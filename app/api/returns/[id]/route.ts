@@ -7,8 +7,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     const user = await getAuthUser(request)
     requireOwner(user)
-    const { status } = await request.json()
-    await sql`UPDATE returns SET status = ${status} WHERE id = ${params.id}`
+    const { status, transaction_reference } = await request.json()
+    if (transaction_reference !== undefined) {
+      await sql`UPDATE returns SET status = ${status}, transaction_reference = ${transaction_reference} WHERE id = ${params.id}`
+    } else {
+      await sql`UPDATE returns SET status = ${status} WHERE id = ${params.id}`
+    }
     const result = await sql`SELECT * FROM returns WHERE id = ${params.id}`
     return NextResponse.json(result.rows[0])
   } catch (error) {

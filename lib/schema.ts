@@ -258,9 +258,19 @@ export async function initSchema(): Promise<void> {
       reason TEXT NOT NULL DEFAULT '',
       notes TEXT DEFAULT '',
       refund_amount NUMERIC(10,2) NOT NULL DEFAULT 0.0,
+      restocking_fee NUMERIC(10,2) NOT NULL DEFAULT 0.0,
+      net_refund NUMERIC(10,2) NOT NULL DEFAULT 0.0,
+      transaction_reference TEXT DEFAULT '',
+      items JSONB DEFAULT '[]',
       status TEXT NOT NULL DEFAULT 'pending',
       created_by TEXT DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `
+
+  // Migration: add new returns columns
+  await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS restocking_fee NUMERIC(10,2) NOT NULL DEFAULT 0.0`
+  await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS net_refund NUMERIC(10,2) NOT NULL DEFAULT 0.0`
+  await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS transaction_reference TEXT DEFAULT ''`
+  await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'`
 }

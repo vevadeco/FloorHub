@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,11 +18,21 @@ import { cn } from '@/lib/utils'
 const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
+const RESTOCKING_RATE = 0.20
+
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
   approved: 'bg-green-50 text-green-700 border-green-200',
   rejected: 'bg-red-50 text-red-700 border-red-200',
   completed: 'bg-blue-50 text-blue-700 border-blue-200',
+}
+
+interface ReturnItem {
+  product_name: string
+  sqft_needed: number
+  unit_price: number
+  return_sqft: number
+  return_total: number
 }
 
 export default function ReturnsPage() {
@@ -42,7 +52,8 @@ function ReturnsContent() {
   const [invoiceSearch, setInvoiceSearch] = useState('')
   const [foundInvoice, setFoundInvoice] = useState<any>(null)
   const [searching, setSearching] = useState(false)
-  const [form, setForm] = useState({ reason: '', notes: '', refund_amount: '' })
+  const [returnItems, setReturnItems] = useState<ReturnItem[]>([])
+  const [form, setForm] = useState({ reason: '', notes: '', transaction_reference: '' })
   const [submitting, setSubmitting] = useState(false)
 
   const load = async () => {
@@ -57,7 +68,6 @@ function ReturnsContent() {
 
   useEffect(() => {
     load()
-    // Pre-fill from query param (e.g. coming from invoice detail page)
     const inv = searchParams.get('invoice')
     if (inv) {
       setInvoiceSearch(inv)
@@ -71,49 +81,81 @@ function ReturnsContent() {
     try {
       const res = await fetch('/api/invoices?is_estimate=false')
       const data = await res.json()
-      const inv = data.find((i: any) =>
+      const match = data.find((i: any) =>
         i.invoice_number.toLowerCase() === invoiceSearch.toLowerCase() ||
         i.id === invoiceSearch
       )
-      if (inv) {
-        setFoundInvoice(inv)
-        setForm(f => ({ ...f, refund_amount: String(inv.total) }))
-      } else {
-        toast.error('Invoice not found')
-        setFoundInvoice(null)
-      }
+      if (!match) { toast.error('Invoice not found'); setFoundInvoice(null); setSearching(false); return }
+
+      // Fetch full invoice with items
+      const full = await fetch(`/api/invoices/${match.id}`).then(r => r.json())
+      setFoundInvoice(full)
+      // Pre-populate return items from invoice line items
+      setReturnItems((full.items ?? []).map((item: any) => ({
+        product_name: item.product_name,
+        sqft_needed: item.sqft_needed,
+        unit_price: item.unit_price,
+        return_sqft: item.sqft_needed, // default to full qty
+        return_total: item.total_price,
+      })))
     } catch { toast.error('Search failed') }
     setSearching(false)
   }
 
-  // Auto-search when dialog opens with pre-filled invoice number
   useEffect(() => {
     if (newDialogOpen && invoiceSearch && !foundInvoice) {
       searchInvoice()
     }
   }, [newDialogOpen])
 
+  const updateReturnSqft = (idx: number, sqft: number) => {
+    setReturnItems(prev => prev.map((item, i) => {
+      if (i !== idx) return item
+      const clamped = Math.max(0, Math.min(sqft, item.sqft_needed))
+      return { ...item, return_sqft: clamped, return_total: Math.round(clamped * item.unit_price * 100) / 100 }
+    }))
+  }
+
+  const totals = useMemo(() => {
+    const refund = returnItems.reduce((s, i) => s + i.return_total, 0)
+    const restocking = Math.round(refund * RESTOCKING_RATE * 100) / 100
+    const net = Math.round((refund - restocking) * 100) / 100
+    return { refund, restocking, net }
+  }, [returnItems])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!foundInvoice) return
+    if (!form.reason.trim()) { toast.error('Reason is required'); return }
     setSubmitting(true)
     const res = await fetch('/api/returns', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invoice_id: foundInvoice.id, reason: form.reason, notes: form.notes, refund_amount: parseFloat(form.refund_amount) || 0 }),
+      body: JSON.stringify({
+        invoice_id: foundInvoice.id,
+        reason: form.reason,
+        notes: form.notes,
+        transaction_reference: form.transaction_reference,
+        items: returnItems,
+      }),
     })
     if (res.ok) {
       toast.success('Return created')
       setNewDialogOpen(false)
-      setFoundInvoice(null)
-      setInvoiceSearch('')
-      setForm({ reason: '', notes: '', refund_amount: '' })
+      resetDialog()
       load()
     } else {
       const d = await res.json()
       toast.error(d.error ?? 'Failed')
     }
     setSubmitting(false)
+  }
+
+  const resetDialog = () => {
+    setFoundInvoice(null)
+    setInvoiceSearch('')
+    setReturnItems([])
+    setForm({ reason: '', notes: '', transaction_reference: '' })
   }
 
   const updateStatus = async (id: string, status: string) => {
@@ -152,6 +194,9 @@ function ReturnsContent() {
                 <TableHead>Reason</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Refund</TableHead>
+                <TableHead className="text-right">Restocking</TableHead>
+                <TableHead className="text-right">Net Refund</TableHead>
+                <TableHead>Ref #</TableHead>
                 <TableHead>Status</TableHead>
                 {userRole === 'owner' && <TableHead className="text-right">Actions</TableHead>}
               </TableRow></TableHeader>
@@ -159,9 +204,12 @@ function ReturnsContent() {
                 <TableRow key={r.id}>
                   <TableCell className="font-mono text-sm">{r.invoice_number}</TableCell>
                   <TableCell>{r.customer_name}</TableCell>
-                  <TableCell className="text-muted-foreground max-w-[200px] truncate">{r.reason}</TableCell>
+                  <TableCell className="text-muted-foreground max-w-[160px] truncate">{r.reason}</TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(r.created_at)}</TableCell>
-                  <TableCell className="text-right tabular-nums font-medium">{fmt(Number(r.refund_amount))}</TableCell>
+                  <TableCell className="text-right tabular-nums">{fmt(Number(r.refund_amount))}</TableCell>
+                  <TableCell className="text-right tabular-nums text-orange-600">-{fmt(Number(r.restocking_fee))}</TableCell>
+                  <TableCell className="text-right tabular-nums font-medium text-green-600">{fmt(Number(r.net_refund))}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{r.transaction_reference || '—'}</TableCell>
                   <TableCell>
                     {userRole === 'owner'
                       ? <Select value={r.status} onValueChange={(v: string) => updateStatus(r.id, v)}>
@@ -183,33 +231,105 @@ function ReturnsContent() {
       </CardContent></Card>
 
       {/* New Return Dialog */}
-      <Dialog open={newDialogOpen} onOpenChange={open => { setNewDialogOpen(open); if (!open) { setFoundInvoice(null); setInvoiceSearch(''); setForm({ reason: '', notes: '', refund_amount: '' }) } }}>
-        <DialogContent className="max-w-md">
+      <Dialog open={newDialogOpen} onOpenChange={open => { setNewDialogOpen(open); if (!open) resetDialog() }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="font-heading">Create Return</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
+            {/* Invoice search */}
             <div className="space-y-2">
               <Label>Invoice Number</Label>
               <div className="flex gap-2">
                 <Input value={invoiceSearch} onChange={e => setInvoiceSearch(e.target.value)} placeholder="e.g. INV-202601-1234" onKeyDown={e => e.key === 'Enter' && searchInvoice()} />
-                <Button type="button" variant="outline" onClick={searchInvoice} disabled={searching}>Search</Button>
+                <Button type="button" variant="outline" onClick={searchInvoice} disabled={searching}>
+                  {searching ? 'Searching...' : 'Search'}
+                </Button>
               </div>
             </div>
+
             {foundInvoice && (
-              <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
-                <p className="font-medium">{foundInvoice.customer_name}</p>
-                <p className="text-muted-foreground">Total: {fmt(foundInvoice.total)} · Status: {foundInvoice.status}</p>
-              </div>
-            )}
-            {foundInvoice && (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2"><Label>Reason *</Label><Input value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} required /></div>
-                <div className="space-y-2"><Label>Refund Amount</Label><Input type="number" step="0.01" value={form.refund_amount} onChange={e => setForm({ ...form, refund_amount: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setNewDialogOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={submitting} className="bg-accent hover:bg-accent/90">Submit Return</Button>
+              <>
+                {/* Invoice summary */}
+                <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
+                  <p className="font-medium">{foundInvoice.customer_name}</p>
+                  <p className="text-muted-foreground">Invoice total: {fmt(foundInvoice.total)} · Status: {foundInvoice.status}</p>
                 </div>
-              </form>
+
+                {/* Line items with adjustable return qty */}
+                <div className="space-y-2">
+                  <Label>Items to Return</Label>
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead>Product</TableHead>
+                          <TableHead className="text-right">Orig Sq Ft</TableHead>
+                          <TableHead className="text-right">Price/sqft</TableHead>
+                          <TableHead className="text-right w-32">Return Sq Ft</TableHead>
+                          <TableHead className="text-right">Return Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {returnItems.map((item, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium text-sm">{item.product_name}</TableCell>
+                            <TableCell className="text-right tabular-nums text-sm">{item.sqft_needed.toFixed(2)}</TableCell>
+                            <TableCell className="text-right tabular-nums text-sm">{fmt(item.unit_price)}</TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max={item.sqft_needed}
+                                value={item.return_sqft}
+                                onChange={e => updateReturnSqft(idx, parseFloat(e.target.value) || 0)}
+                                className="w-28 text-right h-8 text-sm ml-auto"
+                              />
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-sm font-medium">{fmt(item.return_total)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                {/* Totals summary */}
+                <div className="p-3 bg-muted/30 rounded-lg space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Return subtotal</span>
+                    <span className="tabular-nums">{fmt(totals.refund)}</span>
+                  </div>
+                  <div className="flex justify-between text-orange-600">
+                    <span>Restocking fee (20%)</span>
+                    <span className="tabular-nums">-{fmt(totals.restocking)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold border-t pt-1.5">
+                    <span>Net refund to customer</span>
+                    <span className="tabular-nums text-green-600">{fmt(totals.net)}</span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Reason *</Label>
+                    <Input value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Transaction Reference #</Label>
+                    <Input value={form.transaction_reference} onChange={e => setForm({ ...form, transaction_reference: e.target.value })} placeholder="e.g. REF-12345" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2 border-t">
+                    <Button type="button" variant="outline" onClick={() => setNewDialogOpen(false)}>Cancel</Button>
+                    <Button type="submit" disabled={submitting || totals.net <= 0} className="bg-accent hover:bg-accent/90">
+                      {submitting ? 'Submitting...' : `Submit Return — ${fmt(totals.net)} net refund`}
+                    </Button>
+                  </div>
+                </form>
+              </>
             )}
           </div>
         </DialogContent>

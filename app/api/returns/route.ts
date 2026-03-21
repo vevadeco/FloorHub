@@ -18,47 +18,46 @@ export async function POST(request: NextRequest) {
   try {
     const authUser = await getAuthUser(request)
     const body = await request.json()
-    const { invoice_id, reason = '', notes = '', refund_amount = 0 } = body
+    const {
+      invoice_id,
+      reason = '',
+      notes = '',
+      transaction_reference = '',
+      items = [], // [{ product_name, sqft_needed, unit_price, return_sqft, return_total }]
+    } = body
 
     if (!invoice_id) return NextResponse.json({ error: 'invoice_id is required' }, { status: 400 })
 
-    // Ensure returns table exists
-    await sql`
-      CREATE TABLE IF NOT EXISTS returns (
-        id TEXT PRIMARY KEY,
-        invoice_id TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
-        invoice_number TEXT NOT NULL,
-        customer_name TEXT NOT NULL,
-        reason TEXT NOT NULL DEFAULT '',
-        notes TEXT DEFAULT '',
-        refund_amount NUMERIC(10,2) NOT NULL DEFAULT 0.0,
-        status TEXT NOT NULL DEFAULT 'pending',
-        created_by TEXT DEFAULT '',
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `
+    // Lazy migrations
+    await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS restocking_fee NUMERIC(10,2) NOT NULL DEFAULT 0.0`
+    await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS net_refund NUMERIC(10,2) NOT NULL DEFAULT 0.0`
+    await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS transaction_reference TEXT DEFAULT ''`
+    await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'`
 
     // Fetch invoice
     const invResult = await sql`SELECT * FROM invoices WHERE id = ${invoice_id}`
     const inv = invResult.rows[0]
     if (!inv) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
 
-    // Must be status = complete
     if (inv.status !== 'complete') {
       return NextResponse.json({ error: 'Returns are only allowed on completed invoices' }, { status: 400 })
     }
 
-    // Must be within 30 days of completed_at
     const completedAt = inv.completed_at ? new Date(inv.completed_at) : new Date(inv.updated_at)
     const daysSinceComplete = (Date.now() - completedAt.getTime()) / (1000 * 60 * 60 * 24)
     if (daysSinceComplete > 30) {
       return NextResponse.json({ error: 'Returns are only allowed within 30 days of invoice completion' }, { status: 400 })
     }
 
+    // Calculate totals from line items
+    const refund_amount = items.reduce((s: number, i: any) => s + (Number(i.return_total) || 0), 0)
+    const restocking_fee = Math.round(refund_amount * 0.20 * 100) / 100
+    const net_refund = Math.round((refund_amount - restocking_fee) * 100) / 100
+
     const id = generateId()
     await sql`
-      INSERT INTO returns (id, invoice_id, invoice_number, customer_name, reason, notes, refund_amount, status, created_by)
-      VALUES (${id}, ${invoice_id}, ${inv.invoice_number}, ${inv.customer_name}, ${reason}, ${notes}, ${refund_amount}, 'pending', ${authUser.user_id})
+      INSERT INTO returns (id, invoice_id, invoice_number, customer_name, reason, notes, refund_amount, restocking_fee, net_refund, transaction_reference, items, status, created_by)
+      VALUES (${id}, ${invoice_id}, ${inv.invoice_number}, ${inv.customer_name}, ${reason}, ${notes}, ${refund_amount}, ${restocking_fee}, ${net_refund}, ${transaction_reference}, ${JSON.stringify(items)}, 'pending', ${authUser.user_id})
     `
 
     const result = await sql`SELECT * FROM returns WHERE id = ${id}`
