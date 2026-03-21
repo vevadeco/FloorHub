@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { Loader2, Upload, Building2, Lock, Facebook, Image, Download, DatabaseBackup } from 'lucide-react'
+import { Loader2, Upload, Building2, Lock, Facebook, Image, Download, DatabaseBackup, MapPin } from 'lucide-react'
 import type { Settings } from '@/types'
 
 export default function SettingsPage() {
@@ -235,13 +235,32 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            <Separator />
+
+            <div>
+              <p className="text-sm font-medium flex items-center gap-2 mb-3">
+                <MapPin className="h-4 w-4 text-green-600" />
+                Google Maps Integration
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="google_maps_api_key">Google Places API Key</Label>
+                <Input
+                  id="google_maps_api_key"
+                  type="password"
+                  value={settings.google_maps_api_key ?? ''}
+                  onChange={e => setSettings(s => ({ ...s, google_maps_api_key: e.target.value }))}
+                  placeholder="••••••••"
+                />
+                <p className="text-xs text-muted-foreground">Used for address autocomplete when creating invoices.</p>
+              </div>
+            </div>
+
             <div className="flex justify-end pt-2">
               <Button type="submit" className="bg-accent hover:bg-accent/90" disabled={saving}>
                 {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Save Changes
               </Button>
-            </div>
-          </form>
+            </div>          </form>
         </CardContent>
       </Card>
 

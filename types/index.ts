@@ -137,6 +137,7 @@ export interface Settings {
   facebook_api_token: string
   facebook_page_id: string
   logo_url: string
+  google_maps_api_key: string
   updated_at: string
 }
 
