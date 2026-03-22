@@ -20,6 +20,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     const itemsResult = await sql`SELECT * FROM invoice_items WHERE invoice_id = ${params.id}`
+    await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS resend_api_key TEXT DEFAULT ''`
     const settingsResult = await sql`SELECT * FROM settings WHERE id = 'company_settings'`
     const settings = settingsResult.rows[0] || {}
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       tax_amount: parseFloat(inv.tax_amount),
       discount: parseFloat(inv.discount),
       total: parseFloat(inv.total),
-      items: itemsResult.rows.map(i => ({
+      items: itemsResult.rows.map((i: any) => ({
         id: i.id,
         product_id: i.product_id,
         product_name: i.product_name,
@@ -65,14 +66,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     const resendKey = settingsObj.resend_api_key || process.env.RESEND_API_KEY || ''
+    if (!resendKey) {
+      return NextResponse.json({ error: 'No Resend API key configured. Add it in Settings → Email (Resend).' }, { status: 400 })
+    }
+
     const pdfBuffer = await generateInvoicePDF(invoice, settingsObj)
 
+    // Use Resend's shared sending domain — works for any recipient without domain verification
+    const fromName = settingsObj.company_name || 'FloorHub'
+    const from = `${fromName} <delivered@resend.dev>`
+
     const resend = new Resend(resendKey)
-    const { error: resendError } = await resend.emails.send({
-      from: `${settingsObj.company_name || 'FloorHub'} <onboarding@resend.dev>`,
-      to: inv.customer_email,
+    const { data, error: resendError } = await resend.emails.send({
+      from,
+      to: [inv.customer_email],
       subject: `${inv.is_estimate ? 'Estimate' : 'Invoice'} ${inv.invoice_number}`,
-      html: `<p>Please find your ${inv.is_estimate ? 'estimate' : 'invoice'} ${inv.invoice_number} attached.</p><p>Total: $${parseFloat(inv.total).toFixed(2)}</p>`,
+      html: `<p>Please find your ${inv.is_estimate ? 'estimate' : 'invoice'} <strong>${inv.invoice_number}</strong> attached.</p><p>Total: $${parseFloat(inv.total).toFixed(2)}</p>`,
       attachments: [{
         filename: `${inv.invoice_number}.pdf`,
         content: Buffer.from(pdfBuffer).toString('base64'),
@@ -80,14 +89,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     })
 
     if (resendError) {
-      console.error('Resend error:', resendError)
-      return NextResponse.json({ error: 'Failed to send email.' }, { status: 502 })
+      console.error('Resend error:', JSON.stringify(resendError))
+      const msg = (resendError as any).message ?? JSON.stringify(resendError)
+      return NextResponse.json({ error: `Email failed: ${msg}` }, { status: 502 })
     }
 
+    console.log('Email sent:', data?.id)
     return NextResponse.json({ message: 'Email sent successfully' })
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: 401 })
-    console.error(error)
+    console.error('send-email error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
