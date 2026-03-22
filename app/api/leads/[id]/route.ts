@@ -6,13 +6,20 @@ import { getAuthUser, requireOwner, AuthError, ForbiddenError, ValidationError }
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await getAuthUser(request)
+    await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT ''`
+    await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to_name TEXT DEFAULT ''`
     const body = await request.json()
-    const { name, email = '', phone = '', source = 'manual', status = 'new', notes = '', project_type = '', estimated_sqft = 0 } = body
+    const {
+      name, email = '', phone = '', source = 'manual', status = 'new',
+      notes = '', project_type = '', estimated_sqft = 0,
+      assigned_to = '', assigned_to_name = '',
+    } = body
     if (!name) throw new ValidationError('Name is required')
     const result = await sql`
       UPDATE leads SET name=${name}, email=${email}, phone=${phone}, source=${source},
         status=${status}, notes=${notes}, project_type=${project_type},
-        estimated_sqft=${estimated_sqft}, updated_at=NOW()
+        estimated_sqft=${estimated_sqft}, assigned_to=${assigned_to},
+        assigned_to_name=${assigned_to_name}, updated_at=NOW()
       WHERE id=${params.id} RETURNING *`
     if (result.rows.length === 0) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
     return NextResponse.json(result.rows[0])

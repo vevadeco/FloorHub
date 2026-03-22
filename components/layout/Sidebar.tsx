@@ -32,6 +32,8 @@ const ownerNav = [
 const employeeNav = [
   { href: '/invoices', label: 'Invoices', icon: FileText },
   { href: '/commissions', label: 'My Commissions', icon: TrendingUp },
+  { href: '/leads', label: 'Leads', icon: Target },
+  { href: '/messages', label: 'Messages', icon: MessageSquare },
 ]
 
 interface SidebarProps {

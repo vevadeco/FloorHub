@@ -196,6 +196,18 @@ export default function SettingsPage() {
                   onChange={e => setSettings(s => ({ ...s, tax_rate: parseFloat(e.target.value) || 0 }))}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="min_floor_price">Min Floor Price ($/sqft)</Label>
+                <Input
+                  id="min_floor_price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={settings.min_floor_price ?? ''}
+                  onChange={e => setSettings(s => ({ ...s, min_floor_price: parseFloat(e.target.value) || 0 }))}
+                />
+                <p className="text-xs text-muted-foreground">Global minimum price per sqft for products without a specific min price.</p>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="company_address">Address</Label>

@@ -276,4 +276,11 @@ export async function initSchema(): Promise<void> {
   await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS net_refund NUMERIC(10,2) NOT NULL DEFAULT 0.0`
   await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS transaction_reference TEXT DEFAULT ''`
   await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'`
+
+  // Migration: add min_floor_price to settings
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS min_floor_price NUMERIC(10,2) NOT NULL DEFAULT 0.0`
+
+  // Migration: add assigned_to to leads
+  await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT ''`
+  await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to_name TEXT DEFAULT ''`
 }

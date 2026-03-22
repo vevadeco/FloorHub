@@ -109,20 +109,28 @@ export default function InvoicesPage() {
   const [discount, setDiscount] = useState(0)
   const [notes, setNotes] = useState('')
   const [isInstallJob, setIsInstallJob] = useState(false)
+  const [defaultTaxRate, setDefaultTaxRate] = useState(0)
+  const [minFloorPrice, setMinFloorPrice] = useState(0)
 
   const load = async () => {
-    const [inv, est, prod, cust, me] = await Promise.all([
+    const [inv, est, prod, cust, me, settingsRes] = await Promise.all([
       fetch('/api/invoices?is_estimate=false').then(r => r.json()),
       fetch('/api/invoices?is_estimate=true').then(r => r.json()),
       fetch('/api/products').then(r => r.json()),
       fetch('/api/customers').then(r => r.json()),
       fetch('/api/auth/me').then(r => r.json()),
+      fetch('/api/settings').then(r => r.json()),
     ])
     setInvoices(Array.isArray(inv) ? inv : [])
     setEstimates(Array.isArray(est) ? est : [])
     setProducts(Array.isArray(prod) ? prod : [])
     setCustomers(Array.isArray(cust) ? cust : [])
     setUserRole(me?.role ?? 'employee')
+    const tr = parseFloat(settingsRes?.tax_rate ?? 0)
+    const mfp = parseFloat(settingsRes?.min_floor_price ?? 0)
+    setDefaultTaxRate(tr)
+    setMinFloorPrice(mfp)
+    setTaxRate(tr)
     setLoading(false)
   }
   useEffect(() => { load() }, [])
@@ -137,7 +145,8 @@ export default function InvoicesPage() {
 
   const selectProduct = (idx: number, p: any) => {
     const next = [...items]
-    const item = { ...next[idx], product_id: p.id, product_name: p.name, sqft_per_box: p.sqft_per_box, unit_price: p.selling_price, min_selling_price: p.min_selling_price ?? 0 }
+    const effectiveMin = (p.min_selling_price ?? 0) > 0 ? p.min_selling_price : minFloorPrice
+    const item = { ...next[idx], product_id: p.id, product_name: p.name, sqft_per_box: p.sqft_per_box, unit_price: p.selling_price, min_selling_price: effectiveMin }
     if (item.sqft_needed) {
       const sqft = parseFloat(item.sqft_needed)
       item.boxes_needed = Math.ceil(sqft / p.sqft_per_box)
@@ -183,7 +192,7 @@ export default function InvoicesPage() {
     else setCustomerForm({ name: '', email: '', phone: '', address: '' })
   }
 
-  const resetForm = () => { setSelectedCustomer(''); setCustomerForm({ name: '', email: '', phone: '', address: '' }); setItems([]); setTaxRate(0); setDiscount(0); setNotes(''); setIsInstallJob(false) }
+  const resetForm = () => { setSelectedCustomer(''); setCustomerForm({ name: '', email: '', phone: '', address: '' }); setItems([]); setTaxRate(defaultTaxRate); setDiscount(0); setNotes(''); setIsInstallJob(false) }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

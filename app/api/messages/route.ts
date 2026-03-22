@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
-    requireOwner(user)
     const body = await request.json()
     const { title, content, priority = 'normal' } = body
     if (!title || !content) throw new ValidationError('title and content are required')

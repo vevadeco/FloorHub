@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
     try {
       await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS is_install_job BOOLEAN NOT NULL DEFAULT FALSE`
       await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS min_selling_price NUMERIC(10,2) NOT NULL DEFAULT 0.0`
-      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS min_floor_price NUMERIC(10,2) NOT NULL DEFAULT 0.0`
     } catch (migErr) {
       console.error('[invoices POST] migration warning:', migErr)
     }
@@ -89,18 +88,11 @@ export async function POST(request: NextRequest) {
     }
 
     step = 'min_price_check'
-    let globalMinFloorPrice = 0
-    try {
-      const settingsRow = await sql`SELECT min_floor_price FROM settings WHERE id='company_settings'`
-      globalMinFloorPrice = parseFloat(settingsRow.rows[0]?.min_floor_price ?? '0')
-    } catch { /* ignore */ }
-
     for (const item of items) {
       if (item.product_id) {
         try {
           const prod = await sql`SELECT min_selling_price FROM products WHERE id = ${item.product_id}`
-          const prodMin = parseFloat(prod.rows[0]?.min_selling_price ?? '0')
-          const minPrice = prodMin > 0 ? prodMin : globalMinFloorPrice
+          const minPrice = parseFloat(prod.rows[0]?.min_selling_price ?? '0')
           if (minPrice > 0 && item.unit_price < minPrice) {
             return NextResponse.json({
               error: `Price for "${item.product_name}" cannot be below minimum selling price of $${minPrice.toFixed(2)}/sqft`

@@ -96,6 +96,8 @@ export interface Lead {
   notes: string
   project_type: string
   estimated_sqft: number
+  assigned_to: string
+  assigned_to_name: string
   created_at: string
   updated_at: string
 }
@@ -138,6 +140,7 @@ export interface Settings {
   facebook_page_id: string
   logo_url: string
   google_maps_api_key: string
+  min_floor_price: number
   updated_at: string
 }
 
