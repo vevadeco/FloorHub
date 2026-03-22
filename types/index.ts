@@ -146,6 +146,7 @@ export interface Settings {
   aws_place_index: string
   amazon_location_api_key: string
   amazon_location_region: string
+  resend_api_key: string
   updated_at: string
 }
 

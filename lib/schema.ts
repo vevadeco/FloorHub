@@ -294,4 +294,7 @@ export async function initSchema(): Promise<void> {
   // Migration: add amazon_location_api_key and amazon_location_region to settings
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS amazon_location_api_key TEXT DEFAULT ''`
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS amazon_location_region TEXT DEFAULT 'us-east-2'`
+
+  // Migration: add resend_api_key to settings
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS resend_api_key TEXT DEFAULT ''`
 }

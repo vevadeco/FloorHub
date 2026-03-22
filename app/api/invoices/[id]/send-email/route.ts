@@ -60,12 +60,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       aws_place_index: settings.aws_place_index || '',
       amazon_location_api_key: settings.amazon_location_api_key || '',
       amazon_location_region: settings.amazon_location_region || 'us-east-2',
+      resend_api_key: settings.resend_api_key || '',
       updated_at: settings.updated_at || new Date().toISOString(),
     }
 
+    const resendKey = settingsObj.resend_api_key || process.env.RESEND_API_KEY || ''
     const pdfBuffer = await generateInvoicePDF(invoice, settingsObj)
 
-    const resend = new Resend(process.env.RESEND_API_KEY)
+    const resend = new Resend(resendKey)
     const { error: resendError } = await resend.emails.send({
       from: `${settingsObj.company_name || 'FloorHub'} <onboarding@resend.dev>`,
       to: inv.customer_email,

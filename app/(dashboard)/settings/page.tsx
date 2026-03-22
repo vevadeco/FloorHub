@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { Loader2, Upload, Building2, Lock, Facebook, Image, Download, DatabaseBackup, MapPin } from 'lucide-react'
+import { Loader2, Upload, Building2, Lock, Facebook, Image, Download, DatabaseBackup, MapPin, Mail } from 'lucide-react'
 import type { Settings } from '@/types'
 
 export default function SettingsPage() {
@@ -244,6 +244,26 @@ export default function SettingsPage() {
                     onChange={e => setSettings(s => ({ ...s, facebook_page_id: e.target.value }))}
                   />
                 </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <p className="text-sm font-medium flex items-center gap-2 mb-3">
+                <Mail className="h-4 w-4 text-purple-600" />
+                Email (Resend)
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="resend_api_key">Resend API Key</Label>
+                <Input
+                  id="resend_api_key"
+                  type="password"
+                  value={settings.resend_api_key ?? ''}
+                  onChange={e => setSettings(s => ({ ...s, resend_api_key: e.target.value }))}
+                  placeholder="re_••••••••"
+                />
+                <p className="text-xs text-muted-foreground">Used for sending invoices by email. Get a key at <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="underline">resend.com</a>.</p>
               </div>
             </div>
 
