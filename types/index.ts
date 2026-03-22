@@ -140,6 +140,7 @@ export interface Settings {
   facebook_page_id: string
   logo_url: string
   google_maps_api_key: string
+  geoapify_api_key: string
   min_floor_price: number
   updated_at: string
 }

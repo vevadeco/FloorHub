@@ -283,4 +283,7 @@ export async function initSchema(): Promise<void> {
   // Migration: add assigned_to to leads
   await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT ''`
   await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to_name TEXT DEFAULT ''`
+
+  // Migration: add geoapify_api_key to settings
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS geoapify_api_key TEXT DEFAULT ''`
 }

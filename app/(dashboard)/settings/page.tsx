@@ -252,18 +252,18 @@ export default function SettingsPage() {
             <div>
               <p className="text-sm font-medium flex items-center gap-2 mb-3">
                 <MapPin className="h-4 w-4 text-green-600" />
-                Google Maps Integration
+                Address Autocomplete (Geoapify)
               </p>
               <div className="space-y-2">
-                <Label htmlFor="google_maps_api_key">Google Places API Key</Label>
+                <Label htmlFor="geoapify_api_key">Geoapify API Key</Label>
                 <Input
-                  id="google_maps_api_key"
+                  id="geoapify_api_key"
                   type="password"
-                  value={settings.google_maps_api_key ?? ''}
-                  onChange={e => setSettings(s => ({ ...s, google_maps_api_key: e.target.value }))}
+                  value={settings.geoapify_api_key ?? ''}
+                  onChange={e => setSettings(s => ({ ...s, geoapify_api_key: e.target.value }))}
                   placeholder="••••••••"
                 />
-                <p className="text-xs text-muted-foreground">Used for address autocomplete when creating invoices.</p>
+                <p className="text-xs text-muted-foreground">Used for address autocomplete when creating invoices. Get a free key at <a href="https://www.geoapify.com" target="_blank" rel="noopener noreferrer" className="underline">geoapify.com</a>.</p>
               </div>
             </div>
 
