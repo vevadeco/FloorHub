@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { Loader2, Upload, Building2, Lock, Facebook, Image, Download, DatabaseBackup, MapPin, Mail } from 'lucide-react'
+import { Loader2, Upload, Building2, Lock, Facebook, Image, Download, DatabaseBackup, MapPin, Mail, CreditCard } from 'lucide-react'
 import type { Settings } from '@/types'
 
 export default function SettingsPage() {
@@ -275,6 +275,80 @@ export default function SettingsPage() {
                   placeholder="invoices@yourdomain.com"
                 />
                 <p className="text-xs text-muted-foreground">Must be a verified sender in your Resend account. Leave blank to use the default shared address.</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <p className="text-sm font-medium flex items-center gap-2 mb-3">
+                <CreditCard className="h-4 w-4 text-emerald-600" />
+                Payment Gateway
+              </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="payment_gateway">Gateway</Label>
+                  <select
+                    id="payment_gateway"
+                    value={settings.payment_gateway ?? 'none'}
+                    onChange={e => setSettings(s => ({ ...s, payment_gateway: e.target.value as any }))}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="none">None (disable online payments)</option>
+                    <option value="stripe">Stripe</option>
+                    <option value="square">Square POS</option>
+                  </select>
+                </div>
+
+                {settings.payment_gateway === 'stripe' && (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="stripe_secret_key">Stripe Secret Key</Label>
+                      <Input
+                        id="stripe_secret_key"
+                        type="password"
+                        value={settings.stripe_secret_key ?? ''}
+                        onChange={e => setSettings(s => ({ ...s, stripe_secret_key: e.target.value }))}
+                        placeholder="sk_live_••••••••"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="stripe_publishable_key">Stripe Publishable Key</Label>
+                      <Input
+                        id="stripe_publishable_key"
+                        value={settings.stripe_publishable_key ?? ''}
+                        onChange={e => setSettings(s => ({ ...s, stripe_publishable_key: e.target.value }))}
+                        placeholder="pk_live_••••••••"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Get your keys from the <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="underline">Stripe Dashboard</a>.</p>
+                  </div>
+                )}
+
+                {settings.payment_gateway === 'square' && (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="square_access_token">Square Access Token</Label>
+                      <Input
+                        id="square_access_token"
+                        type="password"
+                        value={settings.square_access_token ?? ''}
+                        onChange={e => setSettings(s => ({ ...s, square_access_token: e.target.value }))}
+                        placeholder="EAAAl••••••••"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="square_location_id">Square Location ID</Label>
+                      <Input
+                        id="square_location_id"
+                        value={settings.square_location_id ?? ''}
+                        onChange={e => setSettings(s => ({ ...s, square_location_id: e.target.value }))}
+                        placeholder="L••••••••"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Get your credentials from the <a href="https://developer.squareup.com/apps" target="_blank" rel="noopener noreferrer" className="underline">Square Developer Dashboard</a>. Use a Production access token for live payments.</p>
+                  </div>
+                )}
               </div>
             </div>
 

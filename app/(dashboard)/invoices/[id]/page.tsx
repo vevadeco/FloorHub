@@ -40,8 +40,8 @@ function InvoiceDetail() {
   const [payDialogOpen, setPayDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [paymentGateway, setPaymentGateway] = useState<string>('none')
   const [payForm, setPayForm] = useState({ amount: '', payment_method: 'cash', reference_number: '', notes: '', date: new Date().toISOString().split('T')[0] })
-
   // Edit form state
   const [editCustomer, setEditCustomer] = useState({ name: '', email: '', phone: '', address: '' })
   const [editItems, setEditItems] = useState<any[]>([])
@@ -57,6 +57,7 @@ function InvoiceDetail() {
       loadInvoice(),
       loadPayments(),
       fetch('/api/products').then(r => r.json()).then(d => setProducts(Array.isArray(d) ? d : [])),
+      fetch('/api/settings/payment-gateway').then(r => r.json()).then(d => setPaymentGateway(d.payment_gateway || 'none')),
     ]).finally(() => setLoading(false))
   }, [id])
 
@@ -253,7 +254,9 @@ function InvoiceDetail() {
                 </form>
               </DialogContent>
             </Dialog>
-            <Button className="bg-accent hover:bg-accent/90" onClick={handlePayOnline}><CreditCard className="h-4 w-4 mr-2" />Pay Online</Button>
+            {paymentGateway !== 'none' && (
+              <Button className="bg-accent hover:bg-accent/90" onClick={handlePayOnline}><CreditCard className="h-4 w-4 mr-2" />Pay Online</Button>
+            )}
           </>}
         </div>
       </div>

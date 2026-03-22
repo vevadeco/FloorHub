@@ -148,6 +148,11 @@ export interface Settings {
   amazon_location_region: string
   resend_api_key: string
   resend_from_email: string
+  payment_gateway: 'none' | 'stripe' | 'square'
+  stripe_secret_key: string
+  stripe_publishable_key: string
+  square_access_token: string
+  square_location_id: string
   updated_at: string
 }
 

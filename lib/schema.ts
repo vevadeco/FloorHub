@@ -300,4 +300,11 @@ export async function initSchema(): Promise<void> {
 
   // Migration: add resend_from_email to settings
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS resend_from_email TEXT DEFAULT ''`
+
+  // Migration: add payment gateway fields to settings
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS payment_gateway TEXT DEFAULT 'none'`
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS stripe_secret_key TEXT DEFAULT ''`
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS stripe_publishable_key TEXT DEFAULT ''`
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS square_access_token TEXT DEFAULT ''`
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS square_location_id TEXT DEFAULT ''`
 }

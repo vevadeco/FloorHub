@@ -64,6 +64,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       amazon_location_region: settings.amazon_location_region || 'us-east-2',
       resend_api_key: settings.resend_api_key || '',
       resend_from_email: settings.resend_from_email || '',
+      payment_gateway: (settings.payment_gateway || 'none') as 'none' | 'stripe' | 'square',
+      stripe_secret_key: settings.stripe_secret_key || '',
+      stripe_publishable_key: settings.stripe_publishable_key || '',
+      square_access_token: settings.square_access_token || '',
+      square_location_id: settings.square_location_id || '',
       updated_at: settings.updated_at || new Date().toISOString(),
     }
 

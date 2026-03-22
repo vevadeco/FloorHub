@@ -11,20 +11,24 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const sessionId = searchParams.get('session_id')
 
     if (sessionId) {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-02-24.acacia' })
-      const session = await stripe.checkout.sessions.retrieve(sessionId)
+      const settingsResult = await sql`SELECT stripe_secret_key, payment_gateway FROM settings WHERE id = 'company_settings'`
+      const settings = settingsResult.rows[0] || {}
+      const stripeKey = settings.stripe_secret_key || process.env.STRIPE_SECRET_KEY || ''
 
-      if (session.payment_status === 'paid') {
-        // Update invoice status
-        await sql`UPDATE invoices SET status = 'paid', updated_at = NOW() WHERE id = ${params.id}`
-        // Update transaction
-        await sql`UPDATE payment_transactions SET status = 'paid', payment_status = 'paid' WHERE session_id = ${sessionId}`
+      if (stripeKey && (settings.payment_gateway === 'stripe' || !settings.payment_gateway)) {
+        const stripe = new Stripe(stripeKey, { apiVersion: '2025-02-24.acacia' })
+        const session = await stripe.checkout.sessions.retrieve(sessionId)
+
+        if (session.payment_status === 'paid') {
+          await sql`UPDATE invoices SET status = 'paid', updated_at = NOW() WHERE id = ${params.id}`
+          await sql`UPDATE payment_transactions SET status = 'paid', payment_status = 'paid' WHERE session_id = ${sessionId}`
+        }
+
+        return NextResponse.json({
+          payment_status: session.payment_status,
+          status: session.status,
+        })
       }
-
-      return NextResponse.json({
-        payment_status: session.payment_status,
-        status: session.status,
-      })
     }
 
     // Return invoice payment status
