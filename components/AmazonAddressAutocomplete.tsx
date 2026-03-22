@@ -1,7 +1,7 @@
 'use client'
 
-// @ts-ignore — no types bundled yet for this SDK
-import { AddressForm } from '@aws/address-form-sdk-js'
+import { useState, useRef, useCallback } from 'react'
+import { Input } from '@/components/ui/input'
 
 interface Props {
   apiKey: string
@@ -11,49 +11,62 @@ interface Props {
 }
 
 export default function AmazonAddressAutocomplete({ apiKey, region, value, onChange }: Props) {
-  const handleSubmit = async (getData: (opts: { intendedUse: any }) => Promise<any>) => {
-    const data = await getData({ intendedUse: 'SingleUse' })
-    const parts = [
-      data?.addressLineOne,
-      data?.city,
-      data?.province,
-      data?.postalCode,
-      data?.country,
-    ].filter(Boolean)
-    if (parts.length > 0) onChange(parts.join(', '))
-  }
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [open, setOpen] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const fetchSuggestions = useCallback(async (input: string) => {
+    if (!input || input.length < 3 || !apiKey) { setSuggestions([]); return }
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        // Amazon Location Service Autocomplete REST API with API key auth
+        const url = `https://places.geo.${region}.amazonaws.com/v2/autocomplete` +
+          `?key=${encodeURIComponent(apiKey)}` +
+          `&query=${encodeURIComponent(input)}` +
+          `&filter.includedCountries=CAN` +
+          `&maxResults=5`
+        const res = await fetch(url)
+        if (!res.ok) { setSuggestions([]); return }
+        const data = await res.json()
+        const results = (data.ResultItems ?? []).map((r: any) => r.Address?.Label ?? r.Title ?? '').filter(Boolean)
+        setSuggestions(results)
+        setOpen(results.length > 0)
+      } catch { setSuggestions([]) }
+    }, 300)
+  }, [apiKey, region])
 
   if (!apiKey) return (
-    <input
-      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    <Input
       value={value}
       onChange={e => onChange(e.target.value)}
-      placeholder="Enter address..."
+      placeholder="Start typing address..."
+      autoComplete="off"
     />
   )
 
   return (
-    <div className="amazon-address-form-wrapper">
-      <AddressForm
-        apiKey={apiKey}
-        region={region}
-        allowedCountries={['CA']}
-        showCurrentCountryResultsOnly
-        onSubmit={handleSubmit}
-      >
-        {/* Typeahead input only — no map, no extra fields */}
-        <input
-          data-type="address-form"
-          name="addressLineOne"
-          aria-label="Address"
-          placeholder="Start typing address..."
-          data-api-name="suggest"
-          data-show-current-location
-          defaultValue={value}
-          style={{ width: '100%' }}
-        />
-        <button data-type="address-form" type="submit" style={{ display: 'none' }} />
-      </AddressForm>
+    <div className="relative">
+      <Input
+        value={value}
+        onChange={e => { onChange(e.target.value); fetchSuggestions(e.target.value) }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Start typing address..."
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && (
+        <ul className="absolute z-50 w-full bg-popover border rounded-md shadow-md mt-1 max-h-48 overflow-y-auto">
+          {suggestions.map((s, i) => (
+            <li
+              key={i}
+              className="px-3 py-2 text-sm cursor-pointer hover:bg-muted"
+              onMouseDown={() => { onChange(s); setOpen(false) }}
+            >
+              {s}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
