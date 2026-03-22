@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { TrendingUp, CheckCircle, DollarSign } from 'lucide-react'
+import { TrendingUp, CheckCircle, DollarSign, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
@@ -18,6 +18,7 @@ export default function CommissionsPage() {
   const [userRole, setUserRole] = useState<string>('employee')
   const [empFilter, setEmpFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const load = async () => {
     const [c, me] = await Promise.all([
@@ -29,6 +30,14 @@ export default function CommissionsPage() {
     setLoading(false)
   }
   useEffect(() => { load() }, [])
+
+  const toggleExpand = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   const markPaid = async (id: string) => {
     const res = await fetch(`/api/commissions/${id}/mark-paid`, { method: 'POST' })
@@ -98,6 +107,7 @@ export default function CommissionsPage() {
             : <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
+                  <TableHead className="w-8" />
                   {userRole === 'owner' && <TableHead>Employee</TableHead>}
                   <TableHead>Invoice</TableHead>
                   <TableHead>Date</TableHead>
@@ -109,28 +119,72 @@ export default function CommissionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((c: any) => (
-                  <TableRow key={c.id}>
-                    {userRole === 'owner' && <TableCell className="font-medium">{c.employee_name}</TableCell>}
-                    <TableCell className="font-mono text-sm">{c.invoice_number}</TableCell>
-                    <TableCell className="text-muted-foreground">{c.invoice_date}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmt(Number(c.profit))}</TableCell>
-                    <TableCell className="text-right">{Number(c.commission_rate).toFixed(1)}%</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{fmt(Number(c.commission_amount))}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={cn(c.status === 'paid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200')}>
-                        {c.status}
-                      </Badge>
-                    </TableCell>
-                    {userRole === 'owner' && (
-                      <TableCell className="text-right">
-                        {c.status === 'unpaid'
-                          ? <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white h-7 text-xs" onClick={() => markPaid(c.id)}>Mark Paid</Button>
-                          : <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => markUnpaid(c.id)}>Mark Unpaid</Button>}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
+                {filtered.map((c: any) => {
+                  const isOpen = expanded.has(c.id)
+                  const hasItems = Array.isArray(c.line_items) && c.line_items.length > 0
+                  return (
+                    <>
+                      <TableRow key={c.id} className={cn('cursor-pointer hover:bg-muted/30', isOpen && 'bg-muted/20')} onClick={() => hasItems && toggleExpand(c.id)}>
+                        <TableCell className="w-8 text-muted-foreground">
+                          {hasItems && (isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
+                        </TableCell>
+                        {userRole === 'owner' && <TableCell className="font-medium">{c.employee_name}</TableCell>}
+                        <TableCell className="font-mono text-sm">{c.invoice_number}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.invoice_date}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmt(Number(c.profit))}</TableCell>
+                        <TableCell className="text-right">{Number(c.commission_rate).toFixed(1)}%</TableCell>
+                        <TableCell className="text-right font-medium tabular-nums">{fmt(Number(c.commission_amount))}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(c.status === 'paid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200')}>
+                            {c.status}
+                          </Badge>
+                        </TableCell>
+                        {userRole === 'owner' && (
+                          <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                            {c.status === 'unpaid'
+                              ? <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white h-7 text-xs" onClick={() => markPaid(c.id)}>Mark Paid</Button>
+                              : <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => markUnpaid(c.id)}>Mark Unpaid</Button>}
+                          </TableCell>
+                        )}
+                      </TableRow>
+
+                      {isOpen && hasItems && (
+                        <TableRow key={`${c.id}-items`} className="bg-muted/10 hover:bg-muted/10">
+                          <TableCell colSpan={userRole === 'owner' ? 9 : 7} className="p-0">
+                            <div className="px-8 py-3">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="text-muted-foreground border-b">
+                                    <th className="text-left pb-2 font-medium">Product</th>
+                                    <th className="text-right pb-2 font-medium">Sq Ft</th>
+                                    <th className="text-right pb-2 font-medium">Boxes</th>
+                                    <th className="text-right pb-2 font-medium">Price/sqft</th>
+                                    <th className="text-right pb-2 font-medium">Cost/sqft</th>
+                                    <th className="text-right pb-2 font-medium">Profit</th>
+                                    <th className="text-right pb-2 font-medium">Commission</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {c.line_items.map((item: any, idx: number) => (
+                                    <tr key={idx} className="border-b border-muted/50 last:border-0">
+                                      <td className="py-1.5 font-medium">{item.product_name}</td>
+                                      <td className="py-1.5 text-right tabular-nums">{Number(item.sqft_needed).toFixed(2)}</td>
+                                      <td className="py-1.5 text-right tabular-nums">{item.boxes_needed}</td>
+                                      <td className="py-1.5 text-right tabular-nums">{fmt(item.unit_price)}</td>
+                                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">{fmt(item.cost_price)}</td>
+                                      <td className={cn('py-1.5 text-right tabular-nums', item.item_profit < 0 ? 'text-red-600' : '')}>{fmt(item.item_profit)}</td>
+                                      <td className="py-1.5 text-right tabular-nums font-medium text-green-700">{fmt(item.item_commission)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  )
+                })}
               </TableBody>
             </Table></div>}
       </CardContent></Card>
