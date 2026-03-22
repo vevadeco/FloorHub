@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function AmazonAddressAutocomplete({ apiKey, region, value, onChange }: Props) {
-  const handleSubmit = async (getData: (opts: { intendedUse: string }) => Promise<any>) => {
+  const handleSubmit = async (getData: (opts: { intendedUse: any }) => Promise<any>) => {
     const data = await getData({ intendedUse: 'SingleUse' })
     const parts = [
       data?.addressLineOne,
