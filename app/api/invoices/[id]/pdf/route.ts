@@ -51,6 +51,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       google_maps_api_key: settings.google_maps_api_key || '',
       geoapify_api_key: settings.geoapify_api_key || '',
       min_floor_price: parseFloat(settings.min_floor_price || '0'),
+      country: settings.country || 'US',
+      aws_place_index: settings.aws_place_index || '',
+      amazon_location_api_key: settings.amazon_location_api_key || '',
+      amazon_location_region: settings.amazon_location_region || 'us-east-2',
       updated_at: settings.updated_at || new Date().toISOString(),
     }
 
