@@ -53,6 +53,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       facebook_api_token: settings.facebook_api_token || '',
       facebook_page_id: settings.facebook_page_id || '',
       logo_url: settings.logo_url || '',
+      google_maps_api_key: settings.google_maps_api_key || '',
+      min_floor_price: parseFloat(settings.min_floor_price || '0'),
       updated_at: settings.updated_at || new Date().toISOString(),
     }
 
