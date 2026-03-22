@@ -147,6 +147,7 @@ export interface Settings {
   amazon_location_api_key: string
   amazon_location_region: string
   resend_api_key: string
+  resend_from_email: string
   updated_at: string
 }
 

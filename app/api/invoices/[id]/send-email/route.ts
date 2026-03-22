@@ -21,6 +21,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const itemsResult = await sql`SELECT * FROM invoice_items WHERE invoice_id = ${params.id}`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS resend_api_key TEXT DEFAULT ''`
+    await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS resend_from_email TEXT DEFAULT ''`
     const settingsResult = await sql`SELECT * FROM settings WHERE id = 'company_settings'`
     const settings = settingsResult.rows[0] || {}
 
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       amazon_location_api_key: settings.amazon_location_api_key || '',
       amazon_location_region: settings.amazon_location_region || 'us-east-2',
       resend_api_key: settings.resend_api_key || '',
+      resend_from_email: settings.resend_from_email || '',
       updated_at: settings.updated_at || new Date().toISOString(),
     }
 
@@ -72,9 +74,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const pdfBuffer = await generateInvoicePDF(invoice, settingsObj)
 
-    // Use Resend's shared sending domain — works for any recipient without domain verification
+    // Use custom from email if set, otherwise fall back to shared Resend domain
     const fromName = settingsObj.company_name || 'FloorHub'
-    const from = `${fromName} <delivered@resend.dev>`
+    const fromEmail = settingsObj.resend_from_email || 'delivered@resend.dev'
+    const from = `${fromName} <${fromEmail}>`
 
     const resend = new Resend(resendKey)
     const { data, error: resendError } = await resend.emails.send({

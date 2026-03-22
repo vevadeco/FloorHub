@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS amazon_location_api_key TEXT DEFAULT ''`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS amazon_location_region TEXT DEFAULT 'us-east-2'`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS resend_api_key TEXT DEFAULT ''`
+    await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS resend_from_email TEXT DEFAULT ''`
     const result = await sql`SELECT * FROM settings WHERE id='company_settings'`
     if (result.rows.length === 0) {
       return NextResponse.json({
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
         google_maps_api_key: '', min_floor_price: 0, geoapify_api_key: '',
         country: 'US', aws_place_index: '',
         amazon_location_api_key: '', amazon_location_region: 'us-east-2',
-        resend_api_key: '',
+        resend_api_key: '', resend_from_email: '',
         updated_at: new Date().toISOString()
       })
     }
@@ -46,6 +47,7 @@ export async function PUT(request: NextRequest) {
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS amazon_location_api_key TEXT DEFAULT ''`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS amazon_location_region TEXT DEFAULT 'us-east-2'`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS resend_api_key TEXT DEFAULT ''`
+    await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS resend_from_email TEXT DEFAULT ''`
     const body = await request.json()
     const {
       company_name = '', company_address = '', company_phone = '', company_email = '',
@@ -53,18 +55,18 @@ export async function PUT(request: NextRequest) {
       google_maps_api_key = '', min_floor_price = 0, geoapify_api_key = '',
       country = 'US', aws_place_index = '',
       amazon_location_api_key = '', amazon_location_region = 'us-east-2',
-      resend_api_key = '',
+      resend_api_key = '', resend_from_email = '',
     } = body
 
     const result = await sql`
       INSERT INTO settings (id, company_name, company_address, company_phone, company_email,
         tax_rate, facebook_api_token, facebook_page_id, logo_url, google_maps_api_key, min_floor_price,
         geoapify_api_key, country, aws_place_index, amazon_location_api_key, amazon_location_region,
-        resend_api_key, updated_at)
+        resend_api_key, resend_from_email, updated_at)
       VALUES ('company_settings', ${company_name}, ${company_address}, ${company_phone}, ${company_email},
         ${tax_rate}, ${facebook_api_token}, ${facebook_page_id}, '', ${google_maps_api_key}, ${min_floor_price},
         ${geoapify_api_key}, ${country}, ${aws_place_index}, ${amazon_location_api_key}, ${amazon_location_region},
-        ${resend_api_key}, NOW())
+        ${resend_api_key}, ${resend_from_email}, NOW())
       ON CONFLICT (id) DO UPDATE SET
         company_name=${company_name}, company_address=${company_address},
         company_phone=${company_phone}, company_email=${company_email},
@@ -73,7 +75,7 @@ export async function PUT(request: NextRequest) {
         min_floor_price=${min_floor_price}, geoapify_api_key=${geoapify_api_key},
         country=${country}, aws_place_index=${aws_place_index},
         amazon_location_api_key=${amazon_location_api_key}, amazon_location_region=${amazon_location_region},
-        resend_api_key=${resend_api_key},
+        resend_api_key=${resend_api_key}, resend_from_email=${resend_from_email},
         updated_at=NOW()
       RETURNING *`
     return NextResponse.json(result.rows[0])

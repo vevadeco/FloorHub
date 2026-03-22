@@ -56,6 +56,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       amazon_location_api_key: settings.amazon_location_api_key || '',
       amazon_location_region: settings.amazon_location_region || 'us-east-2',
       resend_api_key: settings.resend_api_key || '',
+      resend_from_email: settings.resend_from_email || '',
       updated_at: settings.updated_at || new Date().toISOString(),
     }
 

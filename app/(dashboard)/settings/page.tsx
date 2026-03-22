@@ -265,6 +265,17 @@ export default function SettingsPage() {
                 />
                 <p className="text-xs text-muted-foreground">Used for sending invoices by email. Get a key at <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="underline">resend.com</a>.</p>
               </div>
+              <div className="space-y-2 mt-4">
+                <Label htmlFor="resend_from_email">From Email Address</Label>
+                <Input
+                  id="resend_from_email"
+                  type="email"
+                  value={settings.resend_from_email ?? ''}
+                  onChange={e => setSettings(s => ({ ...s, resend_from_email: e.target.value }))}
+                  placeholder="invoices@yourdomain.com"
+                />
+                <p className="text-xs text-muted-foreground">Must be a verified sender in your Resend account. Leave blank to use the default shared address.</p>
+              </div>
             </div>
 
             <Separator />
