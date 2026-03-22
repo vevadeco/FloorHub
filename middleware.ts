@@ -27,10 +27,14 @@ export async function middleware(request: NextRequest) {
     const { payload } = await jwtVerify(token, JWT_SECRET)
     const role = payload.role as string
 
-    // Employee RBAC: only allow /invoices and /invoices/*
+    // Employee RBAC: only allow specific routes
     if (role === 'employee') {
-      const isInvoicePath = pathname === '/invoices' || pathname.startsWith('/invoices/')
-      if (!isInvoicePath) {
+      const allowed =
+        pathname === '/invoices' || pathname.startsWith('/invoices/') ||
+        pathname === '/commissions' || pathname.startsWith('/commissions/') ||
+        pathname === '/leads' || pathname.startsWith('/leads/') ||
+        pathname === '/messages' || pathname.startsWith('/messages/')
+      if (!allowed) {
         return NextResponse.redirect(new URL('/invoices', request.url))
       }
     }
