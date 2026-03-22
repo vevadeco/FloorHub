@@ -286,4 +286,8 @@ export async function initSchema(): Promise<void> {
 
   // Migration: add geoapify_api_key to settings
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS geoapify_api_key TEXT DEFAULT ''`
+
+  // Migration: add country and aws_place_index to settings
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'US'`
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS aws_place_index TEXT DEFAULT ''`
 }

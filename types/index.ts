@@ -142,6 +142,8 @@ export interface Settings {
   google_maps_api_key: string
   geoapify_api_key: string
   min_floor_price: number
+  country: string
+  aws_place_index: string
   updated_at: string
 }
 

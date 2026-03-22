@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS google_maps_api_key TEXT DEFAULT ''`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS min_floor_price NUMERIC(10,2) NOT NULL DEFAULT 0.0`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS geoapify_api_key TEXT DEFAULT ''`
+    await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'US'`
+    await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS aws_place_index TEXT DEFAULT ''`
     const result = await sql`SELECT * FROM settings WHERE id='company_settings'`
     if (result.rows.length === 0) {
       return NextResponse.json({
@@ -16,6 +18,7 @@ export async function GET(request: NextRequest) {
         company_phone: '', company_email: '', tax_rate: 0,
         facebook_api_token: '', facebook_page_id: '', logo_url: '',
         google_maps_api_key: '', min_floor_price: 0, geoapify_api_key: '',
+        country: 'US', aws_place_index: '',
         updated_at: new Date().toISOString()
       })
     }
@@ -33,24 +36,30 @@ export async function PUT(request: NextRequest) {
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS google_maps_api_key TEXT DEFAULT ''`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS min_floor_price NUMERIC(10,2) NOT NULL DEFAULT 0.0`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS geoapify_api_key TEXT DEFAULT ''`
+    await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'US'`
+    await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS aws_place_index TEXT DEFAULT ''`
     const body = await request.json()
     const {
       company_name = '', company_address = '', company_phone = '', company_email = '',
       tax_rate = 0, facebook_api_token = '', facebook_page_id = '',
       google_maps_api_key = '', min_floor_price = 0, geoapify_api_key = '',
+      country = 'US', aws_place_index = '',
     } = body
 
     const result = await sql`
       INSERT INTO settings (id, company_name, company_address, company_phone, company_email,
-        tax_rate, facebook_api_token, facebook_page_id, logo_url, google_maps_api_key, min_floor_price, geoapify_api_key, updated_at)
+        tax_rate, facebook_api_token, facebook_page_id, logo_url, google_maps_api_key, min_floor_price,
+        geoapify_api_key, country, aws_place_index, updated_at)
       VALUES ('company_settings', ${company_name}, ${company_address}, ${company_phone}, ${company_email},
-        ${tax_rate}, ${facebook_api_token}, ${facebook_page_id}, '', ${google_maps_api_key}, ${min_floor_price}, ${geoapify_api_key}, NOW())
+        ${tax_rate}, ${facebook_api_token}, ${facebook_page_id}, '', ${google_maps_api_key}, ${min_floor_price},
+        ${geoapify_api_key}, ${country}, ${aws_place_index}, NOW())
       ON CONFLICT (id) DO UPDATE SET
         company_name=${company_name}, company_address=${company_address},
         company_phone=${company_phone}, company_email=${company_email},
         tax_rate=${tax_rate}, facebook_api_token=${facebook_api_token},
         facebook_page_id=${facebook_page_id}, google_maps_api_key=${google_maps_api_key},
         min_floor_price=${min_floor_price}, geoapify_api_key=${geoapify_api_key},
+        country=${country}, aws_place_index=${aws_place_index},
         updated_at=NOW()
       RETURNING *`
     return NextResponse.json(result.rows[0])

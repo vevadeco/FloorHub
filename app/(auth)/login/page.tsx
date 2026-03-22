@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', country: 'US' })
 
   useEffect(() => {
     fetch('/api/auth/setup-status')
@@ -29,7 +29,7 @@ export default function LoginPage() {
     try {
       const endpoint = setupRequired ? '/api/auth/register' : '/api/auth/login'
       const body = setupRequired
-        ? { name: form.name, email: form.email, password: form.password }
+        ? { name: form.name, email: form.email, password: form.password, country: form.country }
         : { email: form.email, password: form.password }
 
       const res = await fetch(endpoint, {
@@ -78,6 +78,21 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
                 <Input id="name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Your name" required />
+              </div>
+            )}
+            {setupRequired && (
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <select
+                  id="country"
+                  value={form.country}
+                  onChange={e => setForm({ ...form, country: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  required
+                >
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                </select>
               </div>
             )}
             <div className="space-y-2">

@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, name, password } = body
+    const { email, name, password, country = 'US' } = body
 
     if (!email || !name || !password) {
       return NextResponse.json({ error: 'Email, name, and password are required' }, { status: 400 })
@@ -81,6 +81,16 @@ export async function POST(request: NextRequest) {
       INSERT INTO users (id, email, name, role, password, commission_rate)
       VALUES (${userId}, ${email}, ${name}, 'owner', ${hashedPassword}, 0.0)
     `
+
+    // Create initial settings row with country
+    try {
+      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'US'`
+      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS aws_place_index TEXT DEFAULT ''`
+      await sql`
+        INSERT INTO settings (id, country) VALUES ('company_settings', ${country})
+        ON CONFLICT (id) DO UPDATE SET country = ${country}
+      `
+    } catch { /* non-fatal */ }
 
     const token = await signToken({ user_id: userId, email, role: 'owner', name })
     const response = NextResponse.json({

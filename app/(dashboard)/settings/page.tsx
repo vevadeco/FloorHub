@@ -252,18 +252,48 @@ export default function SettingsPage() {
             <div>
               <p className="text-sm font-medium flex items-center gap-2 mb-3">
                 <MapPin className="h-4 w-4 text-green-600" />
-                Address Autocomplete (Geoapify)
+                Address Autocomplete
               </p>
-              <div className="space-y-2">
-                <Label htmlFor="geoapify_api_key">Geoapify API Key</Label>
-                <Input
-                  id="geoapify_api_key"
-                  type="password"
-                  value={settings.geoapify_api_key ?? ''}
-                  onChange={e => setSettings(s => ({ ...s, geoapify_api_key: e.target.value }))}
-                  placeholder="••••••••"
-                />
-                <p className="text-xs text-muted-foreground">Used for address autocomplete when creating invoices. Get a free key at <a href="https://www.geoapify.com" target="_blank" rel="noopener noreferrer" className="underline">geoapify.com</a>.</p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <select
+                    id="country"
+                    value={settings.country ?? 'US'}
+                    onChange={e => setSettings(s => ({ ...s, country: e.target.value }))}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="US">United States (Geoapify)</option>
+                    <option value="CA">Canada (Amazon Location Service)</option>
+                  </select>
+                </div>
+
+                {(settings.country ?? 'US') === 'US' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="geoapify_api_key">Geoapify API Key</Label>
+                    <Input
+                      id="geoapify_api_key"
+                      type="password"
+                      value={settings.geoapify_api_key ?? ''}
+                      onChange={e => setSettings(s => ({ ...s, geoapify_api_key: e.target.value }))}
+                      placeholder="••••••••"
+                    />
+                    <p className="text-xs text-muted-foreground">Get a free key at <a href="https://www.geoapify.com" target="_blank" rel="noopener noreferrer" className="underline">geoapify.com</a> (3,000 req/day free).</p>
+                  </div>
+                )}
+
+                {settings.country === 'CA' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="aws_place_index">Amazon Location Service — Place Index Name</Label>
+                    <Input
+                      id="aws_place_index"
+                      value={settings.aws_place_index ?? ''}
+                      onChange={e => setSettings(s => ({ ...s, aws_place_index: e.target.value }))}
+                      placeholder="e.g. MyPlaceIndex"
+                    />
+                    <p className="text-xs text-muted-foreground">Set <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>, and <code>AWS_REGION</code> as environment variables. Enter your Place Index name above.</p>
+                  </div>
+                )}
               </div>
             </div>
 
