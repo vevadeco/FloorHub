@@ -15,7 +15,7 @@ export async function calculateCommission(invoiceId: string): Promise<void> {
 
   // Fetch invoice items with product cost prices
   const itemsResult = await sql`
-    SELECT ii.unit_price, ii.boxes_needed, p.cost_price
+    SELECT ii.unit_price, ii.sqft_needed, p.cost_price
     FROM invoice_items ii
     LEFT JOIN products p ON p.id = ii.product_id
     WHERE ii.invoice_id = ${invoiceId}
@@ -25,8 +25,8 @@ export async function calculateCommission(invoiceId: string): Promise<void> {
   for (const item of itemsResult.rows) {
     const costPrice = item.cost_price ? parseFloat(item.cost_price) : 0
     const unitPrice = parseFloat(item.unit_price)
-    const boxes = parseInt(item.boxes_needed)
-    profit += (unitPrice - costPrice) * boxes
+    const sqft = parseFloat(item.sqft_needed)
+    profit += (unitPrice - costPrice) * sqft
   }
 
   const commissionAmount = Math.max(0, profit) * rate / 100

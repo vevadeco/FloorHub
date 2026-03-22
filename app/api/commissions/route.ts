@@ -26,12 +26,13 @@ export async function GET(request: NextRequest) {
       const lineItems = items.rows.map((i: any) => {
         const unitPrice = parseFloat(i.unit_price)
         const costPrice = i.cost_price ? parseFloat(i.cost_price) : 0
+        const sqft = parseFloat(i.sqft_needed)
         const boxes = parseInt(i.boxes_needed)
-        const itemProfit = (unitPrice - costPrice) * boxes
+        const itemProfit = (unitPrice - costPrice) * sqft
         const itemCommission = Math.max(0, itemProfit) * rate / 100
         return {
           product_name: i.product_name,
-          sqft_needed: parseFloat(i.sqft_needed),
+          sqft_needed: sqft,
           boxes_needed: boxes,
           unit_price: unitPrice,
           cost_price: costPrice,
