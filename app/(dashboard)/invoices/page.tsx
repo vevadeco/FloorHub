@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,14 +14,30 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Plus, FileText, Trash2, Search, Eye, Calculator } from 'lucide-react'
 
+const AmazonAddressAutocomplete = lazy(() => import('@/components/AmazonAddressAutocomplete'))
+
 const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-// Address autocomplete using Google Maps Places API
+// Fetches country config once and caches it
+let _addressConfig: { country: string; apiKey: string; region: string } | null = null
+async function getAddressConfig() {
+  if (_addressConfig) return _addressConfig
+  try {
+    const res = await fetch('/api/address/amazon-config')
+    _addressConfig = await res.json()
+  } catch { _addressConfig = { country: 'US', apiKey: '', region: 'us-east-2' } }
+  return _addressConfig!
+}
+
+// Country-aware address autocomplete
 function AddressAutocomplete({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [config, setConfig] = useState<{ country: string; apiKey: string; region: string } | null>(null)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => { getAddressConfig().then(setConfig) }, [])
 
   const fetchSuggestions = useCallback((input: string) => {
     if (!input || input.length < 3) { setSuggestions([]); return }
@@ -36,6 +52,21 @@ function AddressAutocomplete({ value, onChange }: { value: string; onChange: (v:
     }, 300)
   }, [])
 
+  // Canada: use Amazon Location Service SDK directly
+  if (config?.country === 'CA') {
+    return (
+      <Suspense fallback={<Input value={value} onChange={e => onChange(e.target.value)} placeholder="Start typing address..." />}>
+        <AmazonAddressAutocomplete
+          apiKey={config.apiKey}
+          region={config.region}
+          value={value}
+          onChange={onChange}
+        />
+      </Suspense>
+    )
+  }
+
+  // US (default): Geoapify via backend
   return (
     <div className="relative">
       <Input

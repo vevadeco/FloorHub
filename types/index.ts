@@ -144,6 +144,8 @@ export interface Settings {
   min_floor_price: number
   country: string
   aws_place_index: string
+  amazon_location_api_key: string
+  amazon_location_region: string
   updated_at: string
 }
 

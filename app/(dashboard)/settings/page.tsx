@@ -283,15 +283,27 @@ export default function SettingsPage() {
                 )}
 
                 {settings.country === 'CA' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="aws_place_index">Amazon Location Service — Place Index Name</Label>
-                    <Input
-                      id="aws_place_index"
-                      value={settings.aws_place_index ?? ''}
-                      onChange={e => setSettings(s => ({ ...s, aws_place_index: e.target.value }))}
-                      placeholder="e.g. MyPlaceIndex"
-                    />
-                    <p className="text-xs text-muted-foreground">Set <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>, and <code>AWS_REGION</code> as environment variables. Enter your Place Index name above.</p>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="amazon_location_api_key">Amazon Location API Key</Label>
+                      <Input
+                        id="amazon_location_api_key"
+                        type="password"
+                        value={settings.amazon_location_api_key ?? ''}
+                        onChange={e => setSettings(s => ({ ...s, amazon_location_api_key: e.target.value }))}
+                        placeholder="v1.public.eyJ..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="amazon_location_region">AWS Region</Label>
+                      <Input
+                        id="amazon_location_region"
+                        value={settings.amazon_location_region ?? 'us-east-2'}
+                        onChange={e => setSettings(s => ({ ...s, amazon_location_region: e.target.value }))}
+                        placeholder="us-east-2"
+                      />
+                      <p className="text-xs text-muted-foreground">Create an API key in the <a href="https://console.aws.amazon.com/location/" target="_blank" rel="noopener noreferrer" className="underline">Amazon Location Service console</a> with <code>geo-places:Suggest</code>, <code>geo-places:GetPlace</code>, and <code>geo-maps:GetTile</code> permissions.</p>
+                    </div>
                   </div>
                 )}
               </div>
