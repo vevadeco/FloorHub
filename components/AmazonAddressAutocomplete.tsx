@@ -20,19 +20,35 @@ export default function AmazonAddressAutocomplete({ apiKey, region, value, onCha
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       try {
-        // Amazon Location Service Autocomplete REST API with API key auth
-        const url = `https://places.geo.${region}.amazonaws.com/v2/autocomplete` +
-          `?key=${encodeURIComponent(apiKey)}` +
-          `&query=${encodeURIComponent(input)}` +
-          `&filter.includedCountries=CAN` +
-          `&maxResults=5`
-        const res = await fetch(url)
-        if (!res.ok) { setSuggestions([]); return }
+        // Amazon Location Service Places v2 — POST with API key in query string
+        const url = `https://places.geo.${region}.amazonaws.com/v2/autocomplete?key=${encodeURIComponent(apiKey)}`
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            QueryText: input,
+            MaxResults: 5,
+            Filter: { IncludeCountries: ['CAN'] },
+          }),
+        })
+        if (!res.ok) {
+          console.error('[Amazon Autocomplete] HTTP', res.status, await res.text())
+          setSuggestions([])
+          return
+        }
         const data = await res.json()
-        const results = (data.ResultItems ?? []).map((r: any) => r.Address?.Label ?? r.Title ?? '').filter(Boolean)
+        // v2 response: { ResultItems: [{ Address: { Label }, PlaceId, ... }] }
+        const results: string[] = (data.ResultItems ?? [])
+          .map((r: { Address?: { Label?: string }; Title?: string }) =>
+            r.Address?.Label ?? r.Title ?? ''
+          )
+          .filter(Boolean)
         setSuggestions(results)
         setOpen(results.length > 0)
-      } catch { setSuggestions([]) }
+      } catch (err) {
+        console.error('[Amazon Autocomplete] error:', err)
+        setSuggestions([])
+      }
     }, 300)
   }, [apiKey, region])
 
