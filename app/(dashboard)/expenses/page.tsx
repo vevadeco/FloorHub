@@ -27,7 +27,7 @@ export default function ExpensesPage() {
   const load = () => fetch('/api/expenses').then(r => r.json()).then(setExpenses).finally(() => setLoading(false))
   useEffect(() => {
     load()
-    fetch('/api/employees').then(r => r.json()).then(d => setEmployees(Array.isArray(d) ? d : d.employees ?? []))
+    fetch('/api/users').then(r => r.json()).then(d => setEmployees(Array.isArray(d) ? d : []))
   }, [])
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setDialogOpen(true) }
