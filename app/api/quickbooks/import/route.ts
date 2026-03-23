@@ -112,7 +112,7 @@ async function importInvoices(rows: Record<string, string>[]) {
     const invoiceId = genId()
     try {
       // Ensure customer exists
-      const existing = await sql`SELECT id FROM customers WHERE name = ${customerName} LIMIT 1`
+      const { rows: existing } = await sql`SELECT id FROM customers WHERE name = ${customerName} LIMIT 1`
       let customerId: string
       if (existing.length > 0) {
         customerId = existing[0].id
