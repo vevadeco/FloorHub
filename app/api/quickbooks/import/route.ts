@@ -120,7 +120,7 @@ async function importInvoices(rows: Record<string, string>[]) {
         customerId = genId()
         await sql`INSERT INTO customers (id, name) VALUES (${customerId}, ${customerName}) ON CONFLICT DO NOTHING`
       }
-      await sql`
+      const { rows: invRows } = await sql`
         INSERT INTO invoices (id, invoice_number, customer_id, customer_name, subtotal, tax_rate, tax_amount, discount, total, status, created_at, updated_at)
         VALUES (
           ${invoiceId}, ${invoiceNum}, ${customerId}, ${customerName},
@@ -128,7 +128,17 @@ async function importInvoices(rows: Record<string, string>[]) {
           ${date}::date, ${date}::date
         )
         ON CONFLICT DO NOTHING
+        RETURNING id
       `
+      // Only create payment record if invoice was actually inserted (not a duplicate re-import)
+      if (status === 'paid' && total > 0 && invRows.length > 0) {
+        await sql`
+          INSERT INTO manual_payments (id, invoice_id, amount, payment_method, reference_number, notes, date, created_by, created_at)
+          VALUES (
+            ${genId()}, ${invoiceId}, ${total}, 'other', '', 'Imported from QuickBooks', ${date}, 'quickbooks-import', NOW()
+          )
+        `
+      }
       // Insert line items
       for (const row of invoiceRows) {
         const itemName = row['item'] || row['product/service'] || row['description'] || 'Item'
