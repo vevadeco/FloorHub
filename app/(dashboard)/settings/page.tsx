@@ -19,8 +19,11 @@ export default function SettingsPage() {
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' })
   const [exportingStore, setExportingStore] = useState(false)
   const [importingStore, setImportingStore] = useState(false)
+  const [importingQB, setImportingQB] = useState(false)
+  const [qbType, setQbType] = useState<'customers' | 'products' | 'invoices' | 'expenses'>('customers')
   const fileRef = useRef<HTMLInputElement>(null)
   const importRef = useRef<HTMLInputElement>(null)
+  const qbImportRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetch('/api/settings')
@@ -131,6 +134,29 @@ export default function SettingsPage() {
       toast.error('Invalid file — could not parse JSON')
     } finally {
       setImportingStore(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleQBImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportingQB(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      form.append('type', qbType)
+      const res = await fetch('/api/quickbooks/import', { method: 'POST', body: form })
+      const d = await res.json()
+      if (res.ok) {
+        toast.success(`QuickBooks import complete — ${d.imported} imported, ${d.skipped} skipped`)
+      } else {
+        toast.error(d.error ?? 'Import failed')
+      }
+    } catch {
+      toast.error('Failed to import QuickBooks data')
+    } finally {
+      setImportingQB(false)
       e.target.value = ''
     }
   }
@@ -536,6 +562,29 @@ export default function SettingsPage() {
               {importingStore ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
               Import Data
             </Button>
+          </div>
+          <Separator />
+          <div className="space-y-3">
+            <p className="text-sm font-medium">Import from QuickBooks</p>
+            <p className="text-xs text-muted-foreground">Import data exported from QuickBooks as a CSV file. Select the data type that matches your export.</p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <select
+                value={qbType}
+                onChange={e => setQbType(e.target.value as typeof qbType)}
+                className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="customers">Customers</option>
+                <option value="products">Products / Items</option>
+                <option value="invoices">Invoices</option>
+                <option value="expenses">Expenses</option>
+              </select>
+              <input ref={qbImportRef} type="file" accept=".csv" className="hidden" onChange={handleQBImport} />
+              <Button variant="outline" onClick={() => qbImportRef.current?.click()} disabled={importingQB}>
+                {importingQB ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                Import CSV
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">In QuickBooks: go to Reports → export the relevant report as CSV, or use File → Utilities → Export.</p>
           </div>
         </CardContent>
       </Card>

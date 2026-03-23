@@ -107,6 +107,9 @@ export function Sidebar({ user, logoUrl }: SidebarProps) {
           <LogOut className="h-4 w-4" />
           Sign out
         </button>
+        <div className="px-3 pt-2 pb-1">
+          <p className="text-[10px] text-muted-foreground/50 text-center">made with ❤️ by VevadeCo · v1.4.0</p>
+        </div>
       </div>
     </aside>
   )
