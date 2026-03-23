@@ -98,9 +98,11 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
       if (item.product_id) {
         try {
-          const prod = await sql`SELECT min_selling_price FROM products WHERE id = ${item.product_id}`
+          const prod = await sql`SELECT min_selling_price, cost_price FROM products WHERE id = ${item.product_id}`
           const prodMin = parseFloat(prod.rows[0]?.min_selling_price ?? '0')
-          const minPrice = prodMin > 0 ? prodMin : globalMinFloorPrice
+          const costPrice = parseFloat(prod.rows[0]?.cost_price ?? '0')
+          // If product has its own min_selling_price, use it; otherwise cost_price + global margin
+          const minPrice = prodMin > 0 ? prodMin : (costPrice + globalMinFloorPrice)
           if (minPrice > 0 && item.unit_price < minPrice) {
             return NextResponse.json({
               error: `Price for "${item.product_name}" cannot be below minimum selling price of $${minPrice.toFixed(2)}/sqft`
@@ -112,7 +114,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const invoiceId = generateId()
+        const invoiceId = generateId()
     const invoiceNumber = generateInvoiceNumber(is_estimate)
     const cid = customer_id || generateId()
 

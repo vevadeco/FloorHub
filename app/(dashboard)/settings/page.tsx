@@ -197,7 +197,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="min_floor_price">Min Floor Price ($/sqft)</Label>
+                <Label htmlFor="min_floor_price">Min Margin ($/sqft)</Label>
                 <Input
                   id="min_floor_price"
                   type="number"
@@ -206,7 +206,7 @@ export default function SettingsPage() {
                   value={settings.min_floor_price ?? ''}
                   onChange={e => setSettings(s => ({ ...s, min_floor_price: parseFloat(e.target.value) || 0 }))}
                 />
-                <p className="text-xs text-muted-foreground">Global minimum price per sqft for products without a specific min price.</p>
+                <p className="text-xs text-muted-foreground">Minimum profit margin added on top of cost price. e.g. cost $2.99 + margin $0.50 = min sell price $3.49.</p>
               </div>
             </div>
             <div className="space-y-2">

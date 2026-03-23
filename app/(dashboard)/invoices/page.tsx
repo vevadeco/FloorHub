@@ -176,8 +176,10 @@ export default function InvoicesPage() {
 
   const selectProduct = (idx: number, p: any) => {
     const next = [...items]
-    const effectiveMin = (p.min_selling_price ?? 0) > 0 ? p.min_selling_price : minFloorPrice
-    const item = { ...next[idx], product_id: p.id, product_name: p.name, sqft_per_box: p.sqft_per_box, unit_price: p.selling_price, min_selling_price: effectiveMin }
+    // min = product's own min_selling_price if set, else cost_price + global margin
+    const productMin = parseFloat(p.min_selling_price ?? '0')
+    const effectiveMin = productMin > 0 ? productMin : (parseFloat(p.cost_price ?? '0') + minFloorPrice)
+    const item = { ...next[idx], product_id: p.id, product_name: p.name, sqft_per_box: p.sqft_per_box, unit_price: p.selling_price, min_selling_price: effectiveMin, cost_price: parseFloat(p.cost_price ?? '0') }
     if (item.sqft_needed) {
       const sqft = parseFloat(item.sqft_needed)
       item.boxes_needed = Math.ceil(sqft / p.sqft_per_box)
