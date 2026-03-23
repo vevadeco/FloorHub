@@ -307,4 +307,7 @@ export async function initSchema(): Promise<void> {
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS stripe_publishable_key TEXT DEFAULT ''`
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS square_access_token TEXT DEFAULT ''`
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS square_location_id TEXT DEFAULT ''`
+
+  // Migration: add employee_id to expenses
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS employee_id TEXT DEFAULT ''`
 }

@@ -6,6 +6,8 @@ import { getAuthUser, AuthError, ValidationError } from '@/lib/auth'
 export async function GET(request: NextRequest) {
   try {
     await getAuthUser(request)
+    // Lazy migration
+    try { await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS employee_id TEXT DEFAULT ''` } catch { /* ignore */ }
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const result = category
@@ -21,13 +23,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
+    // Lazy migration
+    try { await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS employee_id TEXT DEFAULT ''` } catch { /* ignore */ }
     const body = await request.json()
-    const { category, description, amount, payment_method = 'cash', reference_number = '', vendor_name = '', date } = body
+    const { category, description, amount, payment_method = 'cash', reference_number = '', vendor_name = '', employee_id = '', date } = body
     if (!category || !description || !amount || !date) throw new ValidationError('category, description, amount, and date are required')
     const id = generateId()
     const result = await sql`
-      INSERT INTO expenses (id, category, description, amount, payment_method, reference_number, vendor_name, date, created_by, created_at)
-      VALUES (${id}, ${category}, ${description}, ${amount}, ${payment_method}, ${reference_number}, ${vendor_name}, ${date}, ${user.user_id}, NOW())
+      INSERT INTO expenses (id, category, description, amount, payment_method, reference_number, vendor_name, employee_id, date, created_by, created_at)
+      VALUES (${id}, ${category}, ${description}, ${amount}, ${payment_method}, ${reference_number}, ${vendor_name}, ${employee_id}, ${date}, ${user.user_id}, NOW())
       RETURNING *`
     return NextResponse.json(result.rows[0], { status: 201 })
   } catch (error) {

@@ -6,13 +6,14 @@ import { getAuthUser, requireOwner, AuthError, ForbiddenError, ValidationError }
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await getAuthUser(request)
+    try { await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS employee_id TEXT DEFAULT ''` } catch { /* ignore */ }
     const body = await request.json()
-    const { category, description, amount, payment_method = 'cash', reference_number = '', vendor_name = '', date } = body
+    const { category, description, amount, payment_method = 'cash', reference_number = '', vendor_name = '', employee_id = '', date } = body
     if (!category || !description || !amount || !date) throw new ValidationError('category, description, amount, and date are required')
     const result = await sql`
       UPDATE expenses SET category=${category}, description=${description}, amount=${amount},
         payment_method=${payment_method}, reference_number=${reference_number},
-        vendor_name=${vendor_name}, date=${date}
+        vendor_name=${vendor_name}, employee_id=${employee_id}, date=${date}
       WHERE id=${params.id} RETURNING *`
     if (result.rows.length === 0) return NextResponse.json({ error: 'Expense not found' }, { status: 404 })
     return NextResponse.json(result.rows[0])
