@@ -57,6 +57,8 @@ export async function POST(request: NextRequest) {
       await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS is_install_job BOOLEAN NOT NULL DEFAULT FALSE`
       await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS min_selling_price NUMERIC(10,2) NOT NULL DEFAULT 0.0`
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS min_floor_price NUMERIC(10,2) NOT NULL DEFAULT 0.0`
+      await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS job_type TEXT`
+      await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS scheduled_date DATE`
     } catch (migErr) {
       console.error('[invoices POST] migration warning:', migErr)
     }
@@ -82,6 +84,8 @@ export async function POST(request: NextRequest) {
       status = 'draft',
       is_estimate = false,
       is_install_job = false,
+      job_type = null,
+      scheduled_date = null,
     } = body
 
     if (!customer_name || !items.length) {
@@ -134,11 +138,13 @@ export async function POST(request: NextRequest) {
       INSERT INTO invoices (
         id, invoice_number, customer_id, customer_name, customer_email,
         customer_phone, customer_address, subtotal, tax_rate, tax_amount,
-        discount, total, notes, status, is_estimate, is_install_job, created_by
+        discount, total, notes, status, is_estimate, is_install_job,
+        job_type, scheduled_date, created_by
       ) VALUES (
         ${invoiceId}, ${invoiceNumber}, ${cid}, ${customer_name}, ${customer_email},
         ${customer_phone}, ${customer_address}, ${subtotal}, ${tax_rate}, ${tax_amount},
-        ${discount}, ${total}, ${notes}, ${status}, ${is_estimate}, ${is_install_job}, ${authUser.user_id}
+        ${discount}, ${total}, ${notes}, ${status}, ${is_estimate}, ${is_install_job},
+        ${job_type}, ${scheduled_date}, ${authUser.user_id}
       )
     `
 

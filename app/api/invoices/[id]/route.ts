@@ -41,6 +41,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       status, notes,
       customer_name, customer_email, customer_phone, customer_address,
       subtotal, tax_rate, tax_amount, discount, total,
+      job_type, scheduled_date,
       items // optional: full item replacement
     } = body
 
@@ -48,8 +49,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (!prevResult.rows[0]) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     const prevStatus = prevResult.rows[0].status
 
-    // Lazy migration: ensure completed_at column exists
+    // Lazy migration: ensure completed_at, job_type, scheduled_date columns exist
     await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ`
+    await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS job_type TEXT`
+    await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS scheduled_date DATE`
 
     // 30-day edit window check (only when editing items/financials, not just status)
     if (items !== undefined) {
@@ -73,6 +76,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         tax_amount = COALESCE(${tax_amount ?? null}, tax_amount),
         discount = COALESCE(${discount ?? null}, discount),
         total = COALESCE(${total ?? null}, total),
+        job_type = CASE WHEN ${job_type !== undefined} THEN ${job_type ?? null} ELSE job_type END,
+        scheduled_date = CASE WHEN ${scheduled_date !== undefined} THEN ${scheduled_date ?? null} ELSE scheduled_date END,
         updated_at = NOW()
       WHERE id = ${params.id}
     `

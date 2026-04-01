@@ -37,6 +37,9 @@ export interface Invoice {
   notes: string
   status: 'draft' | 'sent' | 'paid' | 'cancelled'
   is_estimate: boolean
+  is_install_job: boolean
+  job_type: 'installation' | 'delivery' | 'pickup' | null
+  scheduled_date: string | null
   created_by: string
   created_at: string
   updated_at: string

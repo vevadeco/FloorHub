@@ -331,7 +331,23 @@ function InvoiceDetail() {
               {invoice.customer_address && <p className="text-sm text-muted-foreground">{invoice.customer_address}</p>}
             </CardContent>
           </Card>
-          <Card>
+          {invoice.job_type && (
+            <Card>
+              <CardHeader><CardTitle className="font-heading text-lg">Scheduling</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Job Type</span>
+                  <span className="capitalize font-medium">{invoice.job_type}</span>
+                </div>
+                {invoice.scheduled_date && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Scheduled Date</span>
+                    <span className="font-medium">{new Date(invoice.scheduled_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}          <Card>
             <CardHeader><CardTitle className="font-heading text-lg">Summary</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="tabular-nums">{fmt(invoice.subtotal)}</span></div>

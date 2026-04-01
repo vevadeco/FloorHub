@@ -313,4 +313,8 @@ export async function initSchema(): Promise<void> {
 
   // Migration: add terms_and_conditions to settings
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS terms_and_conditions TEXT DEFAULT ''`
+
+  // Migration: add job_type and scheduled_date to invoices
+  await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS job_type TEXT`
+  await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS scheduled_date DATE`
 }

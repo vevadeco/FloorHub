@@ -140,6 +140,8 @@ export default function InvoicesPage() {
   const [discount, setDiscount] = useState(0)
   const [notes, setNotes] = useState('')
   const [isInstallJob, setIsInstallJob] = useState(false)
+  const [jobType, setJobType] = useState<string>('none')
+  const [scheduledDate, setScheduledDate] = useState('')
   const [defaultTaxRate, setDefaultTaxRate] = useState(0)
   const [minFloorPrice, setMinFloorPrice] = useState(0)
 
@@ -225,18 +227,25 @@ export default function InvoicesPage() {
     else setCustomerForm({ name: '', email: '', phone: '', address: '' })
   }
 
-  const resetForm = () => { setSelectedCustomer(''); setCustomerForm({ name: '', email: '', phone: '', address: '' }); setItems([]); setTaxRate(defaultTaxRate); setDiscount(0); setNotes(''); setIsInstallJob(false) }
+  const resetForm = () => { setSelectedCustomer(''); setCustomerForm({ name: '', email: '', phone: '', address: '' }); setItems([]); setTaxRate(defaultTaxRate); setDiscount(0); setNotes(''); setIsInstallJob(false); setJobType('none'); setScheduledDate('') }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (items.length === 0) { toast.error('Add at least one item'); return }
+    if (jobType !== 'none' && !scheduledDate) {
+      toast.error('Please select a scheduled date for the job type')
+      return
+    }
     const payload = {
       customer_id: selectedCustomer || crypto.randomUUID(),
       customer_name: customerForm.name, customer_email: customerForm.email,
       customer_phone: customerForm.phone, customer_address: customerForm.address,
       items: items.map((i: any) => ({ product_id: i.product_id, product_name: i.product_name, sqft_needed: parseFloat(i.sqft_needed), sqft_per_box: i.sqft_per_box, boxes_needed: i.boxes_needed, unit_price: i.unit_price, total_price: i.total_price })),
       subtotal: calcs.subtotal, tax_rate: taxRate, tax_amount: calcs.taxAmount, discount, total: calcs.total,
-      notes, status: 'draft', is_estimate: isEstimate, is_install_job: isInstallJob && !isEstimate,
+      notes, status: 'draft', is_estimate: isEstimate,
+      is_install_job: isInstallJob && !isEstimate,
+      job_type: jobType === 'none' ? null : jobType,
+      scheduled_date: jobType === 'none' ? null : scheduledDate,
     }
     const res = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     if (res.ok) { toast.success(`${isEstimate ? 'Estimate' : 'Invoice'} created`); setDialogOpen(false); resetForm(); load() }
@@ -390,10 +399,26 @@ export default function InvoicesPage() {
 
                 <div className="flex items-center justify-between pt-2 border-t">
                   {!isEstimate && (
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input type="checkbox" checked={isInstallJob} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setIsInstallJob(e.target.checked)} className="h-4 w-4 rounded border-input accent-accent" />
-                      <span className="text-sm font-medium">Mark as Installation Job</span>
-                    </label>
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="space-y-1">
+                        <Label className="text-sm font-medium">Job Type</Label>
+                        <Select value={jobType} onValueChange={(v: string) => { setJobType(v); if (v === 'none') setScheduledDate('') }}>
+                          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            <SelectItem value="installation">Installation</SelectItem>
+                            <SelectItem value="delivery">Delivery</SelectItem>
+                            <SelectItem value="pickup">Pickup</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {jobType !== 'none' && (
+                        <div className="space-y-1">
+                          <Label className="text-sm font-medium capitalize">{jobType} Date *</Label>
+                          <Input type="date" value={scheduledDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScheduledDate(e.target.value)} className="w-44" required />
+                        </div>
+                      )}
+                    </div>
                   )}
                   <div className="flex gap-2 ml-auto">
                     <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
