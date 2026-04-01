@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { ArrowLeft, Download, Mail, CreditCard, RefreshCw, FileText, Loader2, Banknote, Trash2, Pencil, Plus, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Download, Mail, CreditCard, RefreshCw, FileText, Loader2, Banknote, Trash2, Pencil, Plus, RotateCcw, Printer } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
@@ -37,6 +37,7 @@ function InvoiceDetail() {
   const [loading, setLoading] = useState(true)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [converting, setConverting] = useState(false)
+  const [printingPDF, setPrintingPDF] = useState(false)
   const [payDialogOpen, setPayDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -173,6 +174,22 @@ function InvoiceDetail() {
     URL.revokeObjectURL(url); toast.success('PDF downloaded')
   }
 
+  const handlePrintPDF = async () => {
+    setPrintingPDF(true)
+    try {
+      const res = await fetch(`/api/invoices/${id}/pdf`)
+      if (!res.ok) { toast.error('Failed to load PDF for printing'); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const tab = window.open(url, '_blank')
+      if (tab) {
+        tab.addEventListener('load', () => { tab.print(); URL.revokeObjectURL(url) })
+      }
+    } finally {
+      setPrintingPDF(false)
+    }
+  }
+
   const handleSendEmail = async () => {
     setSendingEmail(true)
     const res = await fetch(`/api/invoices/${id}/send-email`, { method: 'POST' })
@@ -237,6 +254,7 @@ function InvoiceDetail() {
             <Button variant="outline" onClick={() => router.push(`/returns?invoice=${invoice.invoice_number}`)}><RotateCcw className="h-4 w-4 mr-2" />Create Return</Button>
           )}
           <Button variant="outline" onClick={handleDownloadPDF}><Download className="h-4 w-4 mr-2" />PDF</Button>
+          <Button variant="outline" onClick={handlePrintPDF} disabled={printingPDF}>{printingPDF ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}Print</Button>
           {invoice.customer_email && invoice.status !== 'paid' && <Button variant="outline" onClick={handleSendEmail} disabled={sendingEmail}>{sendingEmail ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}Email</Button>}
           {invoice.is_estimate && <Button variant="outline" onClick={handleConvert} disabled={converting}>{converting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}Convert</Button>}
           {!invoice.is_estimate && invoice.status !== 'paid' && <>

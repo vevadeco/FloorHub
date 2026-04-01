@@ -310,4 +310,7 @@ export async function initSchema(): Promise<void> {
 
   // Migration: add employee_id to expenses
   await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS employee_id TEXT DEFAULT ''`
+
+  // Migration: add terms_and_conditions to settings
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS terms_and_conditions TEXT DEFAULT ''`
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
@@ -50,7 +51,7 @@ export default function SettingsPage() {
     if (!file) return
     setUploadingLogo(true)
     const form = new FormData()
-    form.append('file', file)
+    form.append('logo', file)
     const res = await fetch('/api/settings/logo', { method: 'POST', body: form })
     if (res.ok) {
       const d = await res.json()
@@ -242,6 +243,18 @@ export default function SettingsPage() {
                 value={settings.company_address ?? ''}
                 onChange={e => setSettings(s => ({ ...s, company_address: e.target.value }))}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="terms_and_conditions">Terms and Conditions</Label>
+              <Textarea
+                id="terms_and_conditions"
+                rows={5}
+                value={settings.terms_and_conditions ?? ''}
+                onChange={e => setSettings(s => ({ ...s, terms_and_conditions: e.target.value }))}
+                placeholder="Enter terms and conditions to be printed on invoices..."
+              />
+              <p className="text-xs text-muted-foreground">This text will appear on all printed and PDF invoices.</p>
             </div>
 
             <Separator />

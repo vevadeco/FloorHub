@@ -153,6 +153,7 @@ export interface Settings {
   stripe_publishable_key: string
   square_access_token: string
   square_location_id: string
+  terms_and_conditions: string
   updated_at: string
 }
 

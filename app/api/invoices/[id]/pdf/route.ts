@@ -62,6 +62,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       stripe_publishable_key: settings.stripe_publishable_key || '',
       square_access_token: settings.square_access_token || '',
       square_location_id: settings.square_location_id || '',
+      terms_and_conditions: settings.terms_and_conditions || '',
       updated_at: settings.updated_at || new Date().toISOString(),
     }
 
