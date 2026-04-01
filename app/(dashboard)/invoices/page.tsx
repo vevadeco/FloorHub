@@ -352,10 +352,20 @@ export default function InvoicesPage() {
                         <div className="col-span-4 md:col-span-2 space-y-1">
                           <Label className="text-xs">Sq Ft Needed</Label>
                           <Input type="number" step="0.01" value={item.sqft_needed} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateItem(idx, 'sqft_needed', e.target.value)} placeholder="0.00" />
+                          {item.sqft_per_box > 0 && item.sqft_needed > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              {(parseFloat(item.sqft_needed) / item.sqft_per_box).toFixed(2)} boxes exact
+                            </p>
+                          )}
                         </div>
                         <div className="col-span-4 md:col-span-2 space-y-1">
-                          <Label className="text-xs">Boxes (↑ rounded up)</Label>
+                          <Label className="text-xs">Boxes (rounded up)</Label>
                           <Input type="number" min="0" step="1" value={item.boxes_needed || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateItem(idx, 'boxes_needed', e.target.value)} placeholder="0" />
+                          {item.sqft_per_box > 0 && item.boxes_needed > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              = {(item.boxes_needed * item.sqft_per_box).toFixed(2)} sq ft ordered
+                            </p>
+                          )}
                         </div>
                         <div className="col-span-4 md:col-span-2 space-y-1">
                           <Label className="text-xs">
