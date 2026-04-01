@@ -92,6 +92,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Customer name and items are required' }, { status: 400 })
     }
 
+    // Derive is_install_job from job_type for backward compatibility
+    const effectiveIsInstallJob = job_type === 'installation' ? true : is_install_job
+
     step = 'min_price_check'
     let globalMinFloorPrice = 0
     try {
@@ -143,7 +146,7 @@ export async function POST(request: NextRequest) {
       ) VALUES (
         ${invoiceId}, ${invoiceNumber}, ${cid}, ${customer_name}, ${customer_email},
         ${customer_phone}, ${customer_address}, ${subtotal}, ${tax_rate}, ${tax_amount},
-        ${discount}, ${total}, ${notes}, ${status}, ${is_estimate}, ${is_install_job},
+        ${discount}, ${total}, ${notes}, ${status}, ${is_estimate}, ${effectiveIsInstallJob},
         ${job_type}, ${scheduled_date}, ${authUser.user_id}
       )
     `

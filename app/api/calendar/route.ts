@@ -36,12 +36,23 @@ export async function GET(request: NextRequest) {
       ORDER BY scheduled_date ASC
     `
 
-    return NextResponse.json(result.rows.map(r => ({
-      ...r,
-      scheduled_date: r.scheduled_date
-        ? new Date(r.scheduled_date).toISOString().split('T')[0]
-        : null,
-    })))
+    return NextResponse.json(result.rows.map(r => {
+      let scheduledDate: string | null = null
+      if (r.scheduled_date) {
+        // Neon may return DATE as a JS Date or as a string like "2026-04-15T00:00:00.000Z"
+        const raw = r.scheduled_date
+        if (raw instanceof Date) {
+          // Use UTC parts to avoid timezone shift
+          const y = raw.getUTCFullYear()
+          const m = String(raw.getUTCMonth() + 1).padStart(2, '0')
+          const d = String(raw.getUTCDate()).padStart(2, '0')
+          scheduledDate = `${y}-${m}-${d}`
+        } else {
+          scheduledDate = String(raw).split('T')[0]
+        }
+      }
+      return { ...r, scheduled_date: scheduledDate }
+    }))
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: 401 })
     console.error(error)
