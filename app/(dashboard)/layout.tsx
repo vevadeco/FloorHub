@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/auth'
 import { sql } from '@/lib/db'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
+import { InactivityTimer } from '@/components/auth/InactivityTimer'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = cookies()
@@ -23,6 +24,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen bg-background">
+      <InactivityTimer />
       <Sidebar user={user} logoUrl={logoUrl} />
       <div className="flex flex-col flex-1 min-w-0">
         <TopBar />

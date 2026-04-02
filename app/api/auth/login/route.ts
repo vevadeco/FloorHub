@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import { SignJWT } from 'jose'
 import { sql } from '@/lib/db'
 import { signToken, setAuthCookie } from '@/lib/auth'
 import type { Role } from '@/types'
 
 export const runtime = 'nodejs'
+
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'floorhub-dev-secret-change-in-production'
+)
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,13 +21,23 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await sql`
-      SELECT id, email, name, role, password, commission_rate
+      SELECT id, email, name, role, password, commission_rate, totp_enabled
       FROM users WHERE email = ${email}
     `
     const user = result.rows[0]
 
     if (!user || !(await bcrypt.compare(password, user.password as string))) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+    }
+
+    if (user.totp_enabled) {
+      const tempToken = await new SignJWT({ user_id: user.id as string, purpose: '2fa-challenge' })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('5m')
+        .sign(JWT_SECRET)
+
+      return NextResponse.json({ requires2FA: true, tempToken }, { status: 200 })
     }
 
     const token = await signToken({

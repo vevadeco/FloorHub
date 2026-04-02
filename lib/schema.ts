@@ -317,4 +317,29 @@ export async function initSchema(): Promise<void> {
   // Migration: add job_type and scheduled_date to invoices
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS job_type TEXT`
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS scheduled_date DATE`
+
+  // Migration: add 2FA support (see lib/migrations/add-2fa-schema.sql)
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT FALSE`
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_totp (
+      user_id     TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      secret      TEXT NOT NULL,
+      enabled     BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_backup_codes (
+      id          TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code_hash   TEXT NOT NULL,
+      used        BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+
+  await sql`CREATE INDEX IF NOT EXISTS user_backup_codes_user_id_idx ON user_backup_codes(user_id)`
 }

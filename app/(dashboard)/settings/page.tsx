@@ -8,7 +8,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { Loader2, Upload, Building2, Lock, Facebook, Image, Download, DatabaseBackup, MapPin, Mail, CreditCard } from 'lucide-react'
+import { Loader2, Upload, Building2, Lock, Facebook, Image, Download, DatabaseBackup, MapPin, Mail, CreditCard, Palette, ShieldCheck } from 'lucide-react'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
+import { TwoFactorSetup } from '@/components/auth/TwoFactorSetup'
+import { TwoFactorDisable } from '@/components/auth/TwoFactorDisable'
 import type { Settings } from '@/types'
 
 export default function SettingsPage() {
@@ -22,6 +25,9 @@ export default function SettingsPage() {
   const [importingStore, setImportingStore] = useState(false)
   const [importingQB, setImportingQB] = useState(false)
   const [qbType, setQbType] = useState<'customers' | 'products' | 'invoices' | 'expenses'>('customers')
+  const [totpEnabled, setTotpEnabled] = useState<boolean | null>(null)
+  const [show2FASetup, setShow2FASetup] = useState(false)
+  const [show2FADisable, setShow2FADisable] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const importRef = useRef<HTMLInputElement>(null)
   const qbImportRef = useRef<HTMLInputElement>(null)
@@ -31,6 +37,10 @@ export default function SettingsPage() {
       .then(r => r.json())
       .then(setSettings)
       .finally(() => setLoading(false))
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(d => setTotpEnabled(d.totp_enabled ?? false))
+      .catch(() => setTotpEnabled(false))
   }, [])
 
   const handleSave = async (e: React.FormEvent) => {
@@ -546,6 +556,78 @@ export default function SettingsPage() {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Appearance */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading flex items-center gap-2">
+            <Palette className="h-5 w-5 text-accent" />
+            Appearance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">Dark Mode</p>
+              <p className="text-xs text-muted-foreground">Switch between light and dark color scheme</p>
+            </div>
+            <ThemeToggle />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Two-Factor Authentication */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-accent" />
+            Two-Factor Authentication
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {totpEnabled === null ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading…
+            </div>
+          ) : show2FASetup ? (
+            <TwoFactorSetup
+              onComplete={() => { setShow2FASetup(false); setTotpEnabled(true); toast.success('2FA enabled') }}
+              onCancel={() => setShow2FASetup(false)}
+            />
+          ) : show2FADisable ? (
+            <TwoFactorDisable
+              onDisabled={() => { setShow2FADisable(false); setTotpEnabled(false); toast.success('2FA disabled') }}
+              onCancel={() => setShow2FADisable(false)}
+            />
+          ) : totpEnabled ? (
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium">Status</p>
+                  <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300">
+                    Enabled
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Your account is protected with a TOTP authenticator app.</p>
+              </div>
+              <Button variant="outline" onClick={() => setShow2FADisable(true)}>
+                Disable 2FA
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Status: Not enabled</p>
+                <p className="text-xs text-muted-foreground">Add an extra layer of security to your account.</p>
+              </div>
+              <Button onClick={() => setShow2FASetup(true)} className="bg-accent hover:bg-accent/90">
+                Enable 2FA
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

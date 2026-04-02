@@ -1,19 +1,23 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Loader2 } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({ name: '', email: '', password: '', country: 'US' })
+  const [showInactivityBanner, setShowInactivityBanner] = useState(searchParams.get('reason') === 'inactivity')
+  const [tempToken, setTempToken] = useState<string | null>(null)
+  const [totpCode, setTotpCode] = useState('')
 
   useEffect(() => {
     fetch('/api/auth/setup-status')
@@ -43,6 +47,34 @@ export default function LoginPage() {
         setError(msg)
         return
       }
+      if (data.requires2FA && data.tempToken) {
+        setTempToken(data.tempToken)
+        return
+      }
+      router.push('/')
+      router.refresh()
+    } catch {
+      setError('Network error. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleTotpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/auth/login/2fa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tempToken, code: totpCode }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Invalid code')
+        return
+      }
       router.push('/')
       router.refresh()
     } catch {
@@ -62,62 +94,110 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+      {showInactivityBanner && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-md w-full max-w-md">
+          <span className="flex-1">Your session expired due to inactivity.</span>
+          <button
+            onClick={() => setShowInactivityBanner(false)}
+            className="shrink-0 rounded p-0.5 hover:bg-amber-100 transition-colors"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-accent-foreground font-bold text-xl mx-auto mb-2">F</div>
           <CardTitle className="font-heading text-2xl">
-            {setupRequired ? 'Welcome to FloorHub' : 'Sign in'}
+            {tempToken ? 'Two-Factor Authentication' : setupRequired ? 'Welcome to FloorHub' : 'Sign in'}
           </CardTitle>
           <CardDescription>
-            {setupRequired ? 'Create your owner account to get started' : 'Enter your credentials to continue'}
+            {tempToken
+              ? 'Enter the 6-digit code from your authenticator app'
+              : setupRequired
+              ? 'Create your owner account to get started'
+              : 'Enter your credentials to continue'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {setupRequired && (
+          {tempToken ? (
+            <form onSubmit={handleTotpSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input id="name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Your name" required />
-              </div>
-            )}
-            {setupRequired && (
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <select
-                  id="country"
-                  value={form.country}
-                  onChange={e => setForm({ ...form, country: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                <Label htmlFor="totp-code">Authenticator code</Label>
+                <Input
+                  id="totp-code"
+                  value={totpCode}
+                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  inputMode="numeric"
+                  maxLength={6}
                   required
-                >
-                  <option value="US">United States</option>
-                  <option value="CA">Canada</option>
-                </select>
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground">You can also enter a backup code.</p>
               </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="••••••••" required minLength={6} />
-            </div>
-            {error && (
-              error.toLowerCase().includes('contact your representative')
-                ? (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    {error}
-                  </div>
-                ) : (
-                  <p className="text-sm text-destructive">{error}</p>
-                )
-            )}
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {setupRequired ? 'Create Account' : 'Sign In'}
-            </Button>
-          </form>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={loading || totpCode.length < 6}>
+                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Verify
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => { setTempToken(null); setTotpCode(''); setError('') }}
+              >
+                Back to sign in
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {setupRequired && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input id="name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Your name" required />
+                </div>
+              )}
+              {setupRequired && (
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <select
+                    id="country"
+                    value={form.country}
+                    onChange={e => setForm({ ...form, country: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    required
+                  >
+                    <option value="US">United States</option>
+                    <option value="CA">Canada</option>
+                  </select>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="••••••••" required minLength={6} />
+              </div>
+              {error && (
+                error.toLowerCase().includes('contact your representative')
+                  ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                      {error}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-destructive">{error}</p>
+                  )
+              )}
+              <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={loading}>
+                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {setupRequired ? 'Create Account' : 'Sign In'}
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

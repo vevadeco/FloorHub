@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const authUser = await getAuthUser(request)
     const result = await sql`
-      SELECT id, email, name, role, commission_rate
+      SELECT id, email, name, role, commission_rate, totp_enabled
       FROM users WHERE id = ${authUser.user_id}
     `
     const user = result.rows[0]
@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
       name: user.name,
       role: user.role,
       commission_rate: parseFloat(user.commission_rate),
+      totp_enabled: user.totp_enabled ?? false,
     })
   } catch (error) {
     if (error instanceof AuthError) {
