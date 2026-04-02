@@ -345,4 +345,22 @@ export async function initSchema(): Promise<void> {
 
   // Migration: add require_2fa enforcement to settings
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS require_2fa BOOLEAN NOT NULL DEFAULT FALSE`
+
+  // delivery_orders
+  await sql`
+    CREATE TABLE IF NOT EXISTS delivery_orders (
+      id              TEXT PRIMARY KEY,
+      invoice_id      TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+      invoice_number  TEXT NOT NULL,
+      do_number       INTEGER NOT NULL UNIQUE,
+      delivery_order_id TEXT NOT NULL UNIQUE,
+      customer_name   TEXT NOT NULL,
+      delivery_date   TEXT DEFAULT '',
+      notes           TEXT DEFAULT '',
+      status          TEXT NOT NULL DEFAULT 'pending',
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(invoice_id)
+    )
+  `
 }

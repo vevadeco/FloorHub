@@ -191,3 +191,35 @@ export interface ManualPayment {
   created_by: string
   created_at: string
 }
+
+export type DeliveryOrderStatus = 'pending' | 'scheduled' | 'in_transit' | 'delivered' | 'cancelled'
+
+export interface DeliveryOrder {
+  id: string
+  invoice_id: string
+  invoice_number: string
+  do_number: number
+  delivery_order_id: string
+  customer_name: string
+  customer_address: string
+  delivery_date: string
+  notes: string
+  status: DeliveryOrderStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface DeliveryOrderWithItems extends DeliveryOrder {
+  items: InvoiceItem[]
+  invoice_total: number
+}
+
+export interface DeliveryOrderListItem {
+  id: string
+  invoice_number: string
+  customer_name: string
+  customer_address: string
+  status: string
+  created_at: string
+  job: DeliveryOrder | null
+}

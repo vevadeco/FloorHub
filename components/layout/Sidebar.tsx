@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, FileText, Users, Package, Target, DollarSign,
-  HardHat, UserCog, TrendingUp, MessageSquare, BarChart2, Settings, LogOut, Wrench, Menu, X, RotateCcw, CalendarDays
+  HardHat, UserCog, TrendingUp, MessageSquare, BarChart2, Settings, LogOut, Wrench, Menu, X, RotateCcw, CalendarDays, Truck
 } from 'lucide-react'
 import type { JWTPayload } from '@/types'
 import Image from 'next/image'
@@ -22,6 +22,7 @@ const ownerNav = [
   { href: '/employees', label: 'Employees', icon: UserCog },
   { href: '/commissions', label: 'Commissions', icon: TrendingUp },
   { href: '/installation-jobs', label: 'Installation Jobs', icon: Wrench },
+  { href: '/delivery-orders', label: 'Delivery Orders', icon: Truck },
   { href: '/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/returns', label: 'Returns', icon: RotateCcw },
   { href: '/messages', label: 'Messages', icon: MessageSquare },
