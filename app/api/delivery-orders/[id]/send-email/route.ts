@@ -74,7 +74,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       attachments: [
         {
           filename: `${doRow.delivery_order_id}.pdf`,
-          content: pdfBuffer,
+          content: new Uint8Array(pdfBuffer),
         },
       ],
     })
