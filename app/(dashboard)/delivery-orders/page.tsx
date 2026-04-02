@@ -248,7 +248,7 @@ export default function DeliveryOrdersPage() {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Truck className="h-4 w-4" />
@@ -257,7 +257,7 @@ export default function DeliveryOrdersPage() {
                 : `Delivery Order — ${selected?.invoice_number}`}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
             <div className="space-y-1">
               <Label>Delivery Date</Label>
               <Input
@@ -298,7 +298,7 @@ export default function DeliveryOrdersPage() {
               />
             </div>
           </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-wrap gap-2 pt-2">
             <Button
               variant="outline"
               onClick={handleDownloadPDF}
