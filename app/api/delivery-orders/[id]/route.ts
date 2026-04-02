@@ -32,10 +32,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const inv = await sql`SELECT invoice_number, customer_name, customer_address FROM invoices WHERE id = ${params.id}`
     if (!inv.rows[0]) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
 
-    // Generate next do_number atomically using a subquery in the INSERT
-    // This avoids any race condition — the MAX is computed inside the same statement
+    // Generate next do_number atomically using a CTE with FOR UPDATE to prevent race conditions
     const newId = generateId()
     const result = await sql`
+      WITH seq AS (
+        SELECT COALESCE(MAX(do_number), 0) + 1 AS next_num
+        FROM delivery_orders
+        FOR UPDATE
+      )
       INSERT INTO delivery_orders (id, invoice_id, invoice_number, do_number, delivery_order_id, customer_name, delivery_date, notes, status)
       SELECT
         ${newId},
@@ -47,7 +51,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         ${delivery_date ?? ''},
         ${notes ?? ''},
         ${status ?? 'pending'}
-      FROM (SELECT COALESCE(MAX(do_number), 0) + 1 AS next_num FROM delivery_orders) AS seq
+      FROM seq
       RETURNING *
     `
 
