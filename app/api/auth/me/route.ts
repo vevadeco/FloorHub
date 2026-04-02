@@ -6,11 +6,21 @@ import { sql } from '@/lib/db'
 export async function GET(request: NextRequest) {
   try {
     const authUser = await getAuthUser(request)
-    const result = await sql`
-      SELECT id, email, name, role, commission_rate, totp_enabled
-      FROM users WHERE id = ${authUser.user_id}
-    `
-    const user = result.rows[0]
+    let user: Record<string, unknown> | undefined
+    try {
+      const result = await sql`
+        SELECT id, email, name, role, commission_rate,
+               COALESCE(totp_enabled, false) AS totp_enabled
+        FROM users WHERE id = ${authUser.user_id}
+      `
+      user = result.rows[0]
+    } catch {
+      const result = await sql`
+        SELECT id, email, name, role, commission_rate
+        FROM users WHERE id = ${authUser.user_id}
+      `
+      user = result.rows[0] ? { ...result.rows[0], totp_enabled: false } : undefined
+    }
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
@@ -19,7 +29,7 @@ export async function GET(request: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role,
-      commission_rate: parseFloat(user.commission_rate),
+      commission_rate: parseFloat(user.commission_rate as string),
       totp_enabled: user.totp_enabled ?? false,
     })
   } catch (error) {

@@ -10,15 +10,17 @@ export async function POST(request: NextRequest) {
   try {
     const authUser = await getAuthUser(request)
 
-    // Check if 2FA is already enabled
-    const userResult = await sql`
-      SELECT totp_enabled FROM users WHERE id = ${authUser.user_id}
-    `
-    const user = userResult.rows[0]
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    // Check if 2FA is already enabled — defensive fallback if column not yet migrated
+    let totpEnabled = false
+    try {
+      const userResult = await sql`
+        SELECT COALESCE(totp_enabled, false) AS totp_enabled FROM users WHERE id = ${authUser.user_id}
+      `
+      totpEnabled = userResult.rows[0]?.totp_enabled === true
+    } catch {
+      totpEnabled = false
     }
-    if (user.totp_enabled) {
+    if (totpEnabled) {
       return NextResponse.json({ error: '2FA is already enabled' }, { status: 400 })
     }
 
