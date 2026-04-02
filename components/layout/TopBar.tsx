@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 
 export function TopBar() {
   const [unreadCount, setUnreadCount] = useState(0)
@@ -25,16 +26,19 @@ export function TopBar() {
       <span className="font-heading font-semibold text-sm text-muted-foreground truncate">
         {companyName}
       </span>
-      <Button variant="ghost" size="icon" asChild className="relative">
-        <Link href="/messages">
-          <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-medium">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </Link>
-      </Button>
+      <div className="flex items-center gap-1">
+        <ThemeToggle />
+        <Button variant="ghost" size="icon" asChild className="relative">
+          <Link href="/messages">
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-medium">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Link>
+        </Button>
+      </div>
     </header>
   )
 }

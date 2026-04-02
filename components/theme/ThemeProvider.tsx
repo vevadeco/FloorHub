@@ -51,7 +51,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }
 
   const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light')
+    // Read current DOM state to avoid stale closure issues
+    const isDark = document.documentElement.classList.contains('dark')
+    setTheme(isDark ? 'light' : 'dark')
   }
 
   return (
