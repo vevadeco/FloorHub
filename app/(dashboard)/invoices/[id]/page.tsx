@@ -82,6 +82,8 @@ function InvoiceDetail() {
     setEditTaxRate(invoice.tax_rate)
     setEditDiscount(invoice.discount)
     setEditNotes(invoice.notes || '')
+    setEditJobType(invoice.job_type ?? 'none')
+    setEditScheduledDate(invoice.scheduled_date ? invoice.scheduled_date.split('T')[0] : '')
     setEditDialogOpen(true)
   }
 
@@ -144,6 +146,8 @@ function InvoiceDetail() {
       discount: editDiscount,
       subtotal: editCalcs.subtotal,
       total: editCalcs.total,
+      job_type: editJobType === 'none' ? null : editJobType,
+      scheduled_date: editJobType === 'none' ? null : (editScheduledDate || null),
       items: editItems.map(i => ({
         product_id: i.product_id,
         product_name: i.product_name,
@@ -438,6 +442,28 @@ function InvoiceDetail() {
                   <div className="flex justify-between font-medium text-lg border-t pt-2"><span>Total:</span><span className="tabular-nums">{fmt(editCalcs.total)}</span></div>
                 </div>
               </div>
+            </div>
+
+            {/* Job Type */}
+            <div className="flex items-center gap-4 flex-wrap pt-2 border-t">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium">Job Type</Label>
+                <Select value={editJobType} onValueChange={v => { setEditJobType(v); if (v === 'none') setEditScheduledDate('') }}>
+                  <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="installation">Installation</SelectItem>
+                    <SelectItem value="delivery">Delivery</SelectItem>
+                    <SelectItem value="pickup">Pickup</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {editJobType !== 'none' && (
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium capitalize">{editJobType} Date</Label>
+                  <Input type="date" value={editScheduledDate} onChange={e => setEditScheduledDate(e.target.value)} className="w-44" />
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t">
