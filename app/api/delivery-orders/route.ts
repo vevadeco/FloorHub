@@ -60,6 +60,10 @@ export async function GET(request: NextRequest) {
       ORDER BY i.created_at DESC
     `
 
+    // Debug: log what job_type values exist to help diagnose missing orders
+    const debugRows = await sql`SELECT id, invoice_number, job_type, scheduled_date FROM invoices ORDER BY created_at DESC LIMIT 10`
+    console.log('[delivery-orders GET] recent invoices job_types:', JSON.stringify(debugRows.rows))
+
     const result = rows.rows.map((row: any) => ({
       id: row.id,
       invoice_number: row.invoice_number,

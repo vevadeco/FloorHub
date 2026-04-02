@@ -49,6 +49,8 @@ function InvoiceDetail() {
   const [editTaxRate, setEditTaxRate] = useState(0)
   const [editDiscount, setEditDiscount] = useState(0)
   const [editNotes, setEditNotes] = useState('')
+  const [editJobType, setEditJobType] = useState<string>('none')
+  const [editScheduledDate, setEditScheduledDate] = useState('')
 
   const loadInvoice = () => fetch(`/api/invoices/${id}`).then(r => r.json()).then(setInvoice)
   const loadPayments = () => fetch(`/api/invoices/${id}/manual-payment`).then(r => r.json()).then(d => setPayments(Array.isArray(d) ? d : []))
