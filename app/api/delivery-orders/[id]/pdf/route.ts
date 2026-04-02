@@ -42,8 +42,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const buffer = await generateDeliveryPDF(orderData, settings)
+    const ab = new ArrayBuffer(buffer.length)
+    new Uint8Array(ab).set(buffer)
 
-    return new Response(buffer, {
+    return new Response(new Uint8Array(ab), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${doRow.delivery_order_id}.pdf"`,
