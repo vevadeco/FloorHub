@@ -342,4 +342,7 @@ export async function initSchema(): Promise<void> {
   `
 
   await sql`CREATE INDEX IF NOT EXISTS user_backup_codes_user_id_idx ON user_backup_codes(user_id)`
+
+  // Migration: add require_2fa enforcement to settings
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS require_2fa BOOLEAN NOT NULL DEFAULT FALSE`
 }

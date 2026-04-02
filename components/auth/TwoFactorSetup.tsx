@@ -9,9 +9,10 @@ import { Loader2, Copy, Check } from 'lucide-react'
 interface TwoFactorSetupProps {
   onComplete: () => void
   onCancel: () => void
+  setupToken?: string  // present when org forces 2FA at login
 }
 
-export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
+export function TwoFactorSetup({ onComplete, onCancel, setupToken }: TwoFactorSetupProps) {
   const [step, setStep] = useState<'qr' | 'backup'>('qr')
   const [qrUri, setQrUri] = useState('')
   const [secret, setSecret] = useState('')
@@ -23,7 +24,13 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    fetch('/api/auth/2fa/enroll', { method: 'POST' })
+    const body: Record<string, string> = {}
+    if (setupToken) body.setupToken = setupToken
+    fetch('/api/auth/2fa/enroll', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
       .then(async r => {
         const data = await r.json()
         if (!r.ok) throw new Error(data.error ?? 'Enrollment failed')
@@ -39,10 +46,12 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
     setVerifying(true)
     setError('')
     try {
+      const body: Record<string, string> = { code }
+      if (setupToken) body.setupToken = setupToken
       const res = await fetch('/api/auth/2fa/verify-enrollment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) {

@@ -28,6 +28,9 @@ export default function SettingsPage() {
   const [totpEnabled, setTotpEnabled] = useState<boolean | null>(null)
   const [show2FASetup, setShow2FASetup] = useState(false)
   const [show2FADisable, setShow2FADisable] = useState(false)
+  const [require2fa, setRequire2fa] = useState<boolean>(false)
+  const [savingRequire2fa, setSavingRequire2fa] = useState(false)
+  const [userRole, setUserRole] = useState<string>('')
   const fileRef = useRef<HTMLInputElement>(null)
   const importRef = useRef<HTMLInputElement>(null)
   const qbImportRef = useRef<HTMLInputElement>(null)
@@ -35,11 +38,11 @@ export default function SettingsPage() {
   useEffect(() => {
     fetch('/api/settings')
       .then(r => r.json())
-      .then(setSettings)
+      .then(d => { setSettings(d); setRequire2fa(d.require_2fa ?? false) })
       .finally(() => setLoading(false))
     fetch('/api/auth/me')
       .then(r => r.json())
-      .then(d => setTotpEnabled(d.totp_enabled ?? false))
+      .then(d => { setTotpEnabled(d.totp_enabled ?? false); setUserRole(d.role ?? '') })
       .catch(() => setTotpEnabled(false))
   }, [])
 
@@ -146,6 +149,28 @@ export default function SettingsPage() {
     } finally {
       setImportingStore(false)
       e.target.value = ''
+    }
+  }
+
+  const handleToggleRequire2fa = async (value: boolean) => {
+    setSavingRequire2fa(true)
+    try {
+      const res = await fetch('/api/auth/2fa/require', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ require_2fa: value }),
+      })
+      if (res.ok) {
+        setRequire2fa(value)
+        toast.success(value ? '2FA required for all users' : '2FA requirement removed')
+      } else {
+        const d = await res.json()
+        toast.error(d.error ?? 'Failed to update')
+      }
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setSavingRequire2fa(false)
     }
   }
 
@@ -627,6 +652,30 @@ export default function SettingsPage() {
                 Enable 2FA
               </Button>
             </div>
+          )}
+
+          {/* Owner-only: enforce 2FA for all users */}
+          {userRole === 'owner' && !show2FASetup && !show2FADisable && (
+            <>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Require 2FA for all users</p>
+                  <p className="text-xs text-muted-foreground">
+                    When enabled, employees must set up an authenticator app before accessing the dashboard.
+                  </p>
+                </div>
+                <Button
+                  variant={require2fa ? 'destructive' : 'outline'}
+                  size="sm"
+                  disabled={savingRequire2fa}
+                  onClick={() => handleToggleRequire2fa(!require2fa)}
+                >
+                  {savingRequire2fa && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                  {require2fa ? 'Disable Requirement' : 'Require 2FA'}
+                </Button>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

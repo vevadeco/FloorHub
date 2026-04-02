@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Loader2, X } from 'lucide-react'
+import { TwoFactorSetup } from '@/components/auth/TwoFactorSetup'
 
 function LoginForm() {
   const router = useRouter()
@@ -18,6 +19,7 @@ function LoginForm() {
   const [showInactivityBanner, setShowInactivityBanner] = useState(searchParams.get('reason') === 'inactivity')
   const [tempToken, setTempToken] = useState<string | null>(null)
   const [totpCode, setTotpCode] = useState('')
+  const [setupToken, setSetupToken] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/auth/setup-status')
@@ -48,6 +50,10 @@ function LoginForm() {
       }
       if (data.requires2FA && data.tempToken) {
         setTempToken(data.tempToken)
+        return
+      }
+      if (data.requires2FASetup && data.setupToken) {
+        setSetupToken(data.setupToken)
         return
       }
       router.push('/')
@@ -109,18 +115,26 @@ function LoginForm() {
         <CardHeader className="text-center">
           <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-accent-foreground font-bold text-xl mx-auto mb-2">F</div>
           <CardTitle className="font-heading text-2xl">
-            {tempToken ? 'Two-Factor Authentication' : setupRequired ? 'Welcome to FloorHub' : 'Sign in'}
+            {tempToken ? 'Two-Factor Authentication' : setupToken ? 'Set Up Two-Factor Authentication' : setupRequired ? 'Welcome to FloorHub' : 'Sign in'}
           </CardTitle>
           <CardDescription>
             {tempToken
               ? 'Enter the 6-digit code from your authenticator app'
+              : setupToken
+              ? 'Your organization requires 2FA. Scan the QR code to get started.'
               : setupRequired
               ? 'Create your owner account to get started'
               : 'Enter your credentials to continue'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {tempToken ? (
+          {setupToken ? (
+            <TwoFactorSetup
+              setupToken={setupToken}
+              onComplete={() => { router.push('/'); router.refresh() }}
+              onCancel={() => setSetupToken(null)}
+            />
+          ) : tempToken ? (
             <form onSubmit={handleTotpSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="totp-code">Authenticator code</Label>

@@ -55,6 +55,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ requires2FA: true, tempToken }, { status: 200 })
     }
 
+    // Check if org requires 2FA but user hasn't set it up yet
+    try {
+      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS require_2fa BOOLEAN NOT NULL DEFAULT FALSE`
+      const settingsResult = await sql`SELECT require_2fa FROM settings WHERE id = 'company_settings'`
+      const require2fa = settingsResult.rows[0]?.require_2fa === true
+      if (require2fa) {
+        const setupToken = await new SignJWT({ user_id: user.id as string, purpose: '2fa-setup' })
+          .setProtectedHeader({ alg: 'HS256' })
+          .setIssuedAt()
+          .setExpirationTime('10m')
+          .sign(JWT_SECRET)
+        return NextResponse.json({ requires2FASetup: true, setupToken }, { status: 200 })
+      }
+    } catch {
+      // settings column not yet migrated — skip enforcement
+    }
+
     const token = await signToken({
       user_id: user.id as string,
       email: user.email as string,
