@@ -10,6 +10,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const body = await request.json()
     const { delivery_date, notes, status } = body
 
+    // Ensure sequence exists for atomic DO number generation
+    await sql`CREATE SEQUENCE IF NOT EXISTS delivery_orders_do_number_seq`
+
     // Check if delivery_orders row already exists for this invoice
     const existing = await sql`SELECT id FROM delivery_orders WHERE invoice_id = ${params.id}`
 
@@ -24,16 +27,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         RETURNING *
       `
       const row = result.rows[0]
-      // Fetch customer_address from invoice to include in response
       const inv = await sql`SELECT customer_address FROM invoices WHERE id = ${params.id}`
       return NextResponse.json({ ...row, customer_address: inv.rows[0]?.customer_address || '' })
     } else {
-      // First insert: get invoice info and generate DO-XXXX
       const inv = await sql`SELECT invoice_number, customer_name, customer_address FROM invoices WHERE id = ${params.id}`
       if (!inv.rows[0]) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
 
-      const maxResult = await sql`SELECT COALESCE(MAX(do_number), 0) AS max FROM delivery_orders`
-      const nextNum = (maxResult.rows[0].max as number) + 1
+      // Use nextval for atomic, race-condition-free sequence generation
+      const seqResult = await sql`SELECT nextval('delivery_orders_do_number_seq') AS next_num`
+      const nextNum = Number(seqResult.rows[0].next_num)
       const deliveryOrderId = `DO-${String(nextNum).padStart(4, '0')}`
       const newId = generateId()
 
@@ -50,6 +52,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           ${notes ?? ''},
           ${status ?? 'pending'}
         )
+        ON CONFLICT (invoice_id) DO UPDATE SET
+          delivery_date = EXCLUDED.delivery_date,
+          notes = EXCLUDED.notes,
+          status = EXCLUDED.status,
+          updated_at = NOW()
         RETURNING *
       `
       const row = result.rows[0]

@@ -363,4 +363,5 @@ export async function initSchema(): Promise<void> {
     )
   `
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS delivery_orders_invoice_id_idx ON delivery_orders(invoice_id)`
+  await sql`CREATE SEQUENCE IF NOT EXISTS delivery_orders_do_number_seq`
 }
