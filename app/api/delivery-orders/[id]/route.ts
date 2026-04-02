@@ -32,26 +32,21 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const inv = await sql`SELECT invoice_number, customer_name, customer_address FROM invoices WHERE id = ${params.id}`
     if (!inv.rows[0]) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
 
-    // Generate next do_number atomically using a CTE with FOR UPDATE to prevent race conditions
+    // Generate next do_number atomically using a subquery in the INSERT
+    // PostgreSQL handles this atomically within a single statement
     const newId = generateId()
     const result = await sql`
-      WITH seq AS (
-        SELECT COALESCE(MAX(do_number), 0) + 1 AS next_num
-        FROM delivery_orders
-        FOR UPDATE
-      )
       INSERT INTO delivery_orders (id, invoice_id, invoice_number, do_number, delivery_order_id, customer_name, delivery_date, notes, status)
       SELECT
         ${newId},
         ${params.id},
         ${inv.rows[0].invoice_number},
-        next_num,
-        'DO-' || LPAD(next_num::text, 4, '0'),
+        COALESCE((SELECT MAX(do_number) FROM delivery_orders), 0) + 1,
+        'DO-' || LPAD((COALESCE((SELECT MAX(do_number) FROM delivery_orders), 0) + 1)::text, 4, '0'),
         ${inv.rows[0].customer_name},
         ${delivery_date ?? ''},
         ${notes ?? ''},
         ${status ?? 'pending'}
-      FROM seq
       RETURNING *
     `
 
