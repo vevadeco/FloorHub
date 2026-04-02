@@ -72,7 +72,8 @@ export async function POST(request: NextRequest) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
-    console.error(error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[2fa/disable]', error)
+    const msg = error instanceof Error ? error.message : 'Internal server error'
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
