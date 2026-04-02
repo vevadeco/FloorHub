@@ -20,17 +20,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
-    const result = await sql`
-      SELECT id, email, name, role, password, commission_rate, totp_enabled
-      FROM users WHERE email = ${email}
-    `
-    const user = result.rows[0]
+    // Query user — totp_enabled column added via migration, fall back gracefully if not yet present
+    let user: Record<string, unknown> | undefined
+    try {
+      const result = await sql`
+        SELECT id, email, name, role, password, commission_rate,
+               COALESCE(totp_enabled, false) AS totp_enabled
+        FROM users WHERE email = ${email}
+      `
+      user = result.rows[0]
+    } catch {
+      // Column may not exist yet on first deploy — retry without it
+      const result = await sql`
+        SELECT id, email, name, role, password, commission_rate
+        FROM users WHERE email = ${email}
+      `
+      user = result.rows[0] ? { ...result.rows[0], totp_enabled: false } : undefined
+    }
 
     if (!user || !(await bcrypt.compare(password, user.password as string))) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
-    if (user.totp_enabled) {
+    // Check 2FA — totp_enabled may be false if column was just added
+    const totpEnabled = user.totp_enabled === true
+
+    if (totpEnabled) {
       const tempToken = await new SignJWT({ user_id: user.id as string, purpose: '2fa-challenge' })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
