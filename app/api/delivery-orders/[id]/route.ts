@@ -39,6 +39,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       const deliveryOrderId = `DO-${String(nextNum).padStart(4, '0')}`
       const newId = generateId()
 
+      // Stamp job_type = 'delivery' on the invoice so it shows up in the delivery orders list
+      await sql`UPDATE invoices SET job_type = 'delivery' WHERE id = ${params.id} AND (job_type IS NULL OR job_type != 'delivery')`
+
       const result = await sql`
         INSERT INTO delivery_orders (id, invoice_id, invoice_number, do_number, delivery_order_id, customer_name, delivery_date, notes, status)
         VALUES (

@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         d.updated_at      AS do_updated_at
       FROM invoices i
       LEFT JOIN delivery_orders d ON d.invoice_id = i.id
-      WHERE i.job_type = 'delivery'
+      WHERE i.job_type = 'delivery' OR d.id IS NOT NULL
       ORDER BY i.created_at DESC
     `
 
