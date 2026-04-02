@@ -349,18 +349,18 @@ export async function initSchema(): Promise<void> {
   // delivery_orders
   await sql`
     CREATE TABLE IF NOT EXISTS delivery_orders (
-      id              TEXT PRIMARY KEY,
-      invoice_id      TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
-      invoice_number  TEXT NOT NULL,
-      do_number       INTEGER NOT NULL UNIQUE,
+      id                TEXT PRIMARY KEY,
+      invoice_id        TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+      invoice_number    TEXT NOT NULL,
+      do_number         INTEGER NOT NULL UNIQUE,
       delivery_order_id TEXT NOT NULL UNIQUE,
-      customer_name   TEXT NOT NULL,
-      delivery_date   TEXT DEFAULT '',
-      notes           TEXT DEFAULT '',
-      status          TEXT NOT NULL DEFAULT 'pending',
-      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE(invoice_id)
+      customer_name     TEXT NOT NULL,
+      delivery_date     TEXT DEFAULT '',
+      notes             TEXT DEFAULT '',
+      status            TEXT NOT NULL DEFAULT 'pending',
+      created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS delivery_orders_invoice_id_idx ON delivery_orders(invoice_id)`
 }

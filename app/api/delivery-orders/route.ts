@@ -8,25 +8,32 @@ export async function GET(request: NextRequest) {
   try {
     await getAuthUser(request)
 
-    // Self-healing: ensure delivery_orders table exists
+    // Self-healing: ensure job_type column and delivery_orders table exist
+    try {
+      await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS job_type TEXT`
+      await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS scheduled_date DATE`
+    } catch { /* no-op */ }
+
     try {
       await sql`
         CREATE TABLE IF NOT EXISTS delivery_orders (
-          id              TEXT PRIMARY KEY,
-          invoice_id      TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
-          invoice_number  TEXT NOT NULL,
-          do_number       INTEGER NOT NULL UNIQUE,
+          id                TEXT PRIMARY KEY,
+          invoice_id        TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+          invoice_number    TEXT NOT NULL,
+          do_number         INTEGER NOT NULL UNIQUE,
           delivery_order_id TEXT NOT NULL UNIQUE,
-          customer_name   TEXT NOT NULL,
-          delivery_date   TEXT DEFAULT '',
-          notes           TEXT DEFAULT '',
-          status          TEXT NOT NULL DEFAULT 'pending',
-          created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          UNIQUE(invoice_id)
+          customer_name     TEXT NOT NULL,
+          delivery_date     TEXT DEFAULT '',
+          notes             TEXT DEFAULT '',
+          status            TEXT NOT NULL DEFAULT 'pending',
+          created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `
-    } catch { /* no-op */ }
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS delivery_orders_invoice_id_idx ON delivery_orders(invoice_id)`
+    } catch (e) {
+      console.error('[delivery-orders GET] table creation error:', e)
+    }
 
     const rows = await sql`
       SELECT
