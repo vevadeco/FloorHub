@@ -10,8 +10,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const body = await request.json()
     const { delivery_date, notes, status } = body
 
-    // Ensure sequence exists for atomic DO number generation
+    // Ensure sequence exists and is synced past any existing do_numbers
     await sql`CREATE SEQUENCE IF NOT EXISTS delivery_orders_do_number_seq`
+    await sql`
+      SELECT setval(
+        'delivery_orders_do_number_seq',
+        GREATEST((SELECT COALESCE(MAX(do_number), 0) FROM delivery_orders), nextval('delivery_orders_do_number_seq') - 1)
+      )
+    `
 
     // Check if delivery_orders row already exists for this invoice
     const existing = await sql`SELECT id FROM delivery_orders WHERE invoice_id = ${params.id}`
