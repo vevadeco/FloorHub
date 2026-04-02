@@ -10,19 +10,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const body = await request.json()
     const { delivery_date, notes, status } = body
 
-    // Ensure sequence exists and is synced past any existing do_numbers
-    await sql`CREATE SEQUENCE IF NOT EXISTS delivery_orders_do_number_seq`
-    await sql`
-      SELECT setval(
-        'delivery_orders_do_number_seq',
-        GREATEST((SELECT COALESCE(MAX(do_number), 0) FROM delivery_orders), nextval('delivery_orders_do_number_seq') - 1)
-      )
-    `
-
-    // Check if delivery_orders row already exists for this invoice
+    // Check if a delivery_orders row already exists for this invoice
     const existing = await sql`SELECT id FROM delivery_orders WHERE invoice_id = ${params.id}`
 
     if (existing.rows.length > 0) {
+      // Just update — no new do_number needed
       const result = await sql`
         UPDATE delivery_orders SET
           delivery_date = ${delivery_date ?? ''},
@@ -32,45 +24,37 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         WHERE invoice_id = ${params.id}
         RETURNING *
       `
-      const row = result.rows[0]
       const inv = await sql`SELECT customer_address FROM invoices WHERE id = ${params.id}`
-      return NextResponse.json({ ...row, customer_address: inv.rows[0]?.customer_address || '' })
-    } else {
-      const inv = await sql`SELECT invoice_number, customer_name, customer_address FROM invoices WHERE id = ${params.id}`
-      if (!inv.rows[0]) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
-
-      // Use nextval for atomic, race-condition-free sequence generation
-      const seqResult = await sql`SELECT nextval('delivery_orders_do_number_seq') AS next_num`
-      const nextNum = Number(seqResult.rows[0].next_num)
-      const deliveryOrderId = `DO-${String(nextNum).padStart(4, '0')}`
-      const newId = generateId()
-
-      // Stamp job_type = 'delivery' on the invoice so it shows up in the delivery orders list
-      await sql`UPDATE invoices SET job_type = 'delivery' WHERE id = ${params.id} AND (job_type IS NULL OR job_type != 'delivery')`
-
-      const result = await sql`
-        INSERT INTO delivery_orders (id, invoice_id, invoice_number, do_number, delivery_order_id, customer_name, delivery_date, notes, status)
-        VALUES (
-          ${newId},
-          ${params.id},
-          ${inv.rows[0].invoice_number},
-          ${nextNum},
-          ${deliveryOrderId},
-          ${inv.rows[0].customer_name},
-          ${delivery_date ?? ''},
-          ${notes ?? ''},
-          ${status ?? 'pending'}
-        )
-        ON CONFLICT (invoice_id) DO UPDATE SET
-          delivery_date = EXCLUDED.delivery_date,
-          notes = EXCLUDED.notes,
-          status = EXCLUDED.status,
-          updated_at = NOW()
-        RETURNING *
-      `
-      const row = result.rows[0]
-      return NextResponse.json({ ...row, customer_address: inv.rows[0].customer_address || '' })
+      return NextResponse.json({ ...result.rows[0], customer_address: inv.rows[0]?.customer_address || '' })
     }
+
+    // First time — get invoice info
+    const inv = await sql`SELECT invoice_number, customer_name, customer_address FROM invoices WHERE id = ${params.id}`
+    if (!inv.rows[0]) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
+
+    // Generate next do_number atomically using a subquery in the INSERT
+    // This avoids any race condition — the MAX is computed inside the same statement
+    const newId = generateId()
+    const result = await sql`
+      INSERT INTO delivery_orders (id, invoice_id, invoice_number, do_number, delivery_order_id, customer_name, delivery_date, notes, status)
+      SELECT
+        ${newId},
+        ${params.id},
+        ${inv.rows[0].invoice_number},
+        next_num,
+        'DO-' || LPAD(next_num::text, 4, '0'),
+        ${inv.rows[0].customer_name},
+        ${delivery_date ?? ''},
+        ${notes ?? ''},
+        ${status ?? 'pending'}
+      FROM (SELECT COALESCE(MAX(do_number), 0) + 1 AS next_num FROM delivery_orders) AS seq
+      RETURNING *
+    `
+
+    // Stamp job_type on the invoice
+    await sql`UPDATE invoices SET job_type = 'delivery' WHERE id = ${params.id}`
+
+    return NextResponse.json({ ...result.rows[0], customer_address: inv.rows[0].customer_address || '' })
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: 401 })
     const msg = error instanceof Error ? error.message : String(error)
