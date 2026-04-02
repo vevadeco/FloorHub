@@ -113,14 +113,10 @@ export default function DeliveryOrdersPage() {
         const data = await res.json()
         throw new Error(data.error || 'Failed to save')
       }
-      const updated = await res.json()
-      setOrders(prev => prev.map((o: DeliveryOrderListItem) =>
-        o.id === selected.id
-          ? { ...o, job: { ...updated, customer_address: o.customer_address } }
-          : o
-      ))
       toast.success('Delivery order updated')
       setDialogOpen(false)
+      // Refresh the data from the server to get the latest state
+      load()
     } catch (e: unknown) {
       toast.error((e as Error).message || 'Failed to save')
     } finally {
