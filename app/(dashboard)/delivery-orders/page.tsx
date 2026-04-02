@@ -32,6 +32,7 @@ const statusLabels: Record<string, string> = {
 export default function DeliveryOrdersPage() {
   const [orders, setOrders] = useState<DeliveryOrderListItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [debugInfo, setDebugInfo] = useState<any[]>([])
   const [selected, setSelected] = useState<DeliveryOrderListItem | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -58,7 +59,14 @@ export default function DeliveryOrdersPage() {
   const load = () => {
     fetch('/api/delivery-orders')
       .then(r => r.json())
-      .then(data => setOrders(Array.isArray(data) ? data : []))
+      .then(data => {
+        if (data.orders !== undefined) {
+          setOrders(Array.isArray(data.orders) ? data.orders : [])
+          setDebugInfo(data._debug ?? [])
+        } else {
+          setOrders(Array.isArray(data) ? data : [])
+        }
+      })
       .finally(() => setLoading(false))
   }
 
@@ -205,6 +213,14 @@ export default function DeliveryOrdersPage() {
             {orders.length === 0
               ? 'No delivery orders found. Set an invoice\'s job type to "delivery" to see it here.'
               : 'No delivery orders match your search or filter.'}
+            {debugInfo.length > 0 && (
+              <details className="mt-4 text-left text-xs mx-auto max-w-lg">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Debug: recent invoice job types (click to expand)</summary>
+                <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto">
+                  {JSON.stringify(debugInfo, null, 2)}
+                </pre>
+              </details>
+            )}
           </CardContent>
         </Card>
       ) : (

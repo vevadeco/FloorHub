@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
       } : null,
     }))
 
-    return NextResponse.json(result)
+    return NextResponse.json({ orders: result, _debug: debugRows.rows.map((r: any) => ({ invoice_number: r.invoice_number, job_type: r.job_type })) })
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: 401 })
     const msg = error instanceof Error ? error.message : String(error)
