@@ -35,21 +35,24 @@ export default function DeliveryOrdersPage() {
   const [selected, setSelected] = useState<DeliveryOrderListItem | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [sending, setSending] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+
+  // Send email dialog state
+  const [sendTarget, setSendTarget] = useState<DeliveryOrderListItem | null>(null)
+  const [sendDialogOpen, setSendDialogOpen] = useState(false)
+  const [recipientEmail, setRecipientEmail] = useState('')
+  const [sending, setSending] = useState(false)
 
   const [form, setForm] = useState<{
     delivery_date: string
     notes: string
     status: string
-    recipient_email: string
   }>({
     delivery_date: '',
     notes: '',
     status: 'pending',
-    recipient_email: '',
   })
 
   const load = () => {
@@ -79,9 +82,14 @@ export default function DeliveryOrdersPage() {
       delivery_date: order.job?.delivery_date ?? '',
       notes: order.job?.notes ?? '',
       status: order.job?.status ?? 'pending',
-      recipient_email: '',
     })
     setDialogOpen(true)
+  }
+
+  const openSendDialog = (order: DeliveryOrderListItem) => {
+    setSendTarget(order)
+    setRecipientEmail('')
+    setSendDialogOpen(true)
   }
 
   const handleSave = async () => {
@@ -91,11 +99,7 @@ export default function DeliveryOrdersPage() {
       const res = await fetch(`/api/delivery-orders/${selected.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          delivery_date: form.delivery_date,
-          notes: form.notes,
-          status: form.status,
-        }),
+        body: JSON.stringify(form),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -140,21 +144,22 @@ export default function DeliveryOrdersPage() {
   }
 
   const handleSendEmail = async () => {
-    if (!selected) return
-    if (!form.recipient_email.trim()) {
+    if (!sendTarget) return
+    if (!recipientEmail.trim()) {
       toast.error('Please enter a recipient email address')
       return
     }
     setSending(true)
     try {
-      const res = await fetch(`/api/delivery-orders/${selected.id}/send-email`, {
+      const res = await fetch(`/api/delivery-orders/${sendTarget.id}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipient_email: form.recipient_email }),
+        body: JSON.stringify({ recipient_email: recipientEmail }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to send')
       toast.success('Delivery order sent successfully')
+      setSendDialogOpen(false)
     } catch (e: unknown) {
       toast.error((e as Error).message || 'Failed to send email')
     } finally {
@@ -166,11 +171,9 @@ export default function DeliveryOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Delivery Orders</h1>
-          <p className="text-muted-foreground mt-1">Invoices marked as delivery orders</p>
-        </div>
+      <div>
+        <h1 className="font-heading text-2xl font-bold tracking-tight">Delivery Orders</h1>
+        <p className="text-muted-foreground mt-1">Invoices marked as delivery orders</p>
       </div>
 
       {/* Filters */}
@@ -208,6 +211,7 @@ export default function DeliveryOrdersPage() {
         <div className="grid gap-4">
           {filtered.map((order: DeliveryOrderListItem) => {
             const jobStatus = order.job?.status ?? 'pending'
+            const hasSavedOrder = !!order.job
             return (
               <Card key={order.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
@@ -236,9 +240,22 @@ export default function DeliveryOrdersPage() {
                         </p>
                       )}
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => openDialog(order)}>
-                      {order.job ? 'Edit Order' : 'Set Up Order'}
-                    </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button variant="outline" size="sm" onClick={() => openDialog(order)}>
+                        {hasSavedOrder ? 'Edit Order' : 'Set Up Order'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!hasSavedOrder}
+                        onClick={() => openSendDialog(order)}
+                        className="flex items-center gap-1.5"
+                        title={hasSavedOrder ? 'Send to delivery company' : 'Save the order first to enable sending'}
+                      >
+                        <Mail className="h-3.5 w-3.5" />
+                        Send
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -247,6 +264,7 @@ export default function DeliveryOrdersPage() {
         </div>
       )}
 
+      {/* Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
           <DialogHeader>
@@ -254,7 +272,7 @@ export default function DeliveryOrdersPage() {
               <Truck className="h-4 w-4" />
               {selected?.job?.delivery_order_id
                 ? `Delivery Order — ${selected.job.delivery_order_id}`
-                : `Delivery Order — ${selected?.invoice_number}`}
+                : `Set Up Delivery Order — ${selected?.invoice_number}`}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
@@ -288,15 +306,6 @@ export default function DeliveryOrdersPage() {
                 rows={3}
               />
             </div>
-            <div className="space-y-1">
-              <Label>Recipient Email</Label>
-              <Input
-                type="email"
-                value={form.recipient_email}
-                onChange={(e) => setForm(f => ({ ...f, recipient_email: e.target.value }))}
-                placeholder="delivery@company.com"
-              />
-            </div>
           </div>
           <DialogFooter className="flex-wrap gap-2 pt-2">
             <Button
@@ -308,17 +317,46 @@ export default function DeliveryOrdersPage() {
               <Download className="h-4 w-4" />
               {downloading ? 'Generating...' : 'Download PDF'}
             </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send email dialog */}
+      <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Send to Delivery Company
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              Sending <span className="font-medium text-foreground">{sendTarget?.job?.delivery_order_id}</span> for {sendTarget?.customer_name}.
+            </p>
+            <div className="space-y-1">
+              <Label>Recipient Email</Label>
+              <Input
+                type="email"
+                value={recipientEmail}
+                onChange={(e) => setRecipientEmail(e.target.value)}
+                placeholder="delivery@company.com"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setSendDialogOpen(false)}>Cancel</Button>
             <Button
-              variant="outline"
               onClick={handleSendEmail}
-              disabled={sending || !form.recipient_email.trim()}
+              disabled={sending || !recipientEmail.trim()}
               className="flex items-center gap-2"
             >
               <Mail className="h-4 w-4" />
-              {sending ? 'Sending...' : 'Send to Delivery Company'}
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
+              {sending ? 'Sending...' : 'Send'}
             </Button>
           </DialogFooter>
         </DialogContent>
