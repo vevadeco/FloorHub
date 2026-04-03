@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
         i.customer_address,
         i.status,
         i.created_at,
+        i.job_type,
         d.id              AS do_id,
         d.invoice_id      AS do_invoice_id,
         d.invoice_number  AS do_invoice_number,
@@ -59,6 +60,17 @@ export async function GET(request: NextRequest) {
       WHERE i.job_type = 'delivery' OR d.id IS NOT NULL
       ORDER BY i.created_at DESC
     `
+
+    console.log('[delivery-orders GET] found', rows.rows.length, 'delivery orders')
+    if (rows.rows.length > 0) {
+      console.log('[delivery-orders GET] first row:', JSON.stringify({
+        id: rows.rows[0].id,
+        invoice_number: rows.rows[0].invoice_number,
+        job_type: rows.rows[0].job_type,
+        do_id: rows.rows[0].do_id,
+        delivery_order_id: rows.rows[0].delivery_order_id,
+      }))
+    }
 
     // Debug: log what job_type values exist to help diagnose missing orders
     const debugRows = await sql`SELECT id, invoice_number, job_type, scheduled_date FROM invoices ORDER BY created_at DESC LIMIT 10`
@@ -87,7 +99,9 @@ export async function GET(request: NextRequest) {
       } : null,
     }))
 
-    return NextResponse.json({ orders: result, _debug: debugRows.rows.map((r: any) => ({ invoice_number: r.invoice_number, job_type: r.job_type })) })
+    return NextResponse.json({ orders: result, _debug: debugRows.rows.map((r: any) => ({ invoice_number: r.invoice_number, job_type: r.job_type })) }, {
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+    })
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: 401 })
     const msg = error instanceof Error ? error.message : String(error)

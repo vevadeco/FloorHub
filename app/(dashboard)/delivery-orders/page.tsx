@@ -57,7 +57,7 @@ export default function DeliveryOrdersPage() {
   })
 
   const load = () => {
-    fetch('/api/delivery-orders')
+    fetch('/api/delivery-orders', { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         if (data.orders !== undefined) {
