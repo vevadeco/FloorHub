@@ -76,11 +76,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         tax_amount = COALESCE(${tax_amount ?? null}, tax_amount),
         discount = COALESCE(${discount ?? null}, discount),
         total = COALESCE(${total ?? null}, total),
-        job_type = CASE WHEN ${job_type !== undefined} THEN ${job_type ?? null} ELSE job_type END,
-        scheduled_date = CASE WHEN ${scheduled_date !== undefined} THEN ${scheduled_date ?? null} ELSE scheduled_date END,
         updated_at = NOW()
       WHERE id = ${params.id}
     `
+
+    // Update job_type and scheduled_date only when explicitly provided in the request
+    if (job_type !== undefined) {
+      await sql`UPDATE invoices SET job_type = ${job_type ?? null} WHERE id = ${params.id}`
+    }
+    if (scheduled_date !== undefined) {
+      await sql`UPDATE invoices SET scheduled_date = ${scheduled_date ?? null} WHERE id = ${params.id}`
+    }
 
     // Replace items if provided
     if (items !== undefined) {
