@@ -82,9 +82,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // Update job_type and scheduled_date only when explicitly provided in the request
     if (job_type !== undefined) {
+      console.log('[invoices PUT] updating job_type to:', job_type, 'for invoice:', params.id)
       await sql`UPDATE invoices SET job_type = ${job_type ?? null} WHERE id = ${params.id}`
     }
     if (scheduled_date !== undefined) {
+      console.log('[invoices PUT] updating scheduled_date to:', scheduled_date, 'for invoice:', params.id)
       await sql`UPDATE invoices SET scheduled_date = ${scheduled_date ?? null} WHERE id = ${params.id}`
     }
 

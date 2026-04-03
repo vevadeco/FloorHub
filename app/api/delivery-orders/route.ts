@@ -72,6 +72,10 @@ export async function GET(request: NextRequest) {
       }))
     }
 
+    // Also check: are there invoices with job_type='delivery' that we're missing?
+    const allDelivery = await sql`SELECT id, invoice_number, job_type FROM invoices WHERE LOWER(job_type) = 'delivery'`
+    console.log('[delivery-orders GET] all invoices with delivery job_type:', allDelivery.rows.length)
+
     // Debug: log what job_type values exist to help diagnose missing orders
     const debugRows = await sql`SELECT id, invoice_number, job_type, scheduled_date FROM invoices ORDER BY created_at DESC LIMIT 10`
     console.log('[delivery-orders GET] recent invoices job_types:', JSON.stringify(debugRows.rows))
