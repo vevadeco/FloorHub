@@ -134,6 +134,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   try {
     const user = await getAuthUser(request)
     requireOwner(user)
+
+    // Clean up related records that don't have ON DELETE CASCADE
+    await sql`DELETE FROM manual_payments WHERE invoice_id = ${params.id}`
+    await sql`DELETE FROM payment_transactions WHERE invoice_id = ${params.id}`
+    await sql`DELETE FROM commissions WHERE invoice_id = ${params.id}`
+
     const result = await sql`DELETE FROM invoices WHERE id = ${params.id}`
     if (result.rowCount === 0) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     return NextResponse.json({ message: 'Invoice deleted' })
