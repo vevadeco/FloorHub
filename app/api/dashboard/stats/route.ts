@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
       sql`SELECT COUNT(*) as v FROM customers`,
       sql`SELECT COUNT(*) as v FROM leads`,
       sql`SELECT COUNT(*) as v FROM leads WHERE status='new'`,
-      // Revenue: manual payments
-      sql`SELECT COALESCE(SUM(amount),0) as v FROM manual_payments`,
-      // Revenue: stripe payments
-      sql`SELECT COALESCE(SUM(amount),0) as v FROM payment_transactions WHERE payment_status='paid'`,
+      // Revenue: manual payments (only for existing invoices)
+      sql`SELECT COALESCE(SUM(mp.amount),0) as v FROM manual_payments mp WHERE EXISTS (SELECT 1 FROM invoices i WHERE i.id = mp.invoice_id)`,
+      // Revenue: stripe payments (only for existing invoices)
+      sql`SELECT COALESCE(SUM(pt.amount),0) as v FROM payment_transactions pt WHERE pt.payment_status='paid' AND EXISTS (SELECT 1 FROM invoices i WHERE i.id = pt.invoice_id)`,
       sql`SELECT COUNT(*) as v FROM invoices WHERE is_estimate = false AND status IN ('draft','sent')`,
       sql`SELECT COALESCE(SUM(amount),0) as v FROM expenses`,
       sql`SELECT i.id, i.invoice_number, i.customer_name, i.total, i.status, i.created_at
