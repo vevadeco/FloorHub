@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       reason = '',
       notes = '',
       transaction_reference = '',
-      items = [], // [{ product_name, sqft_needed, unit_price, return_sqft, return_total }]
+      items = [], // [{ product_name, sqft_per_box, boxes_needed, unit_price, return_boxes, return_total }]
       waive_restocking = false,
       refund_method = 'original_payment' as RefundMethod,
     } = body

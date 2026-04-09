@@ -29,8 +29,10 @@ const statusColors: Record<string, string> = {
 interface ReturnItem {
   product_name: string
   sqft_needed: number
+  sqft_per_box: number
+  boxes_needed: number
   unit_price: number
-  return_sqft: number
+  return_boxes: number
   return_total: number
 }
 
@@ -101,9 +103,11 @@ function ReturnsContent() {
       setReturnItems((full.items ?? []).map((item: any) => ({
         product_name: item.product_name,
         sqft_needed: item.sqft_needed,
+        sqft_per_box: item.sqft_per_box || 1,
+        boxes_needed: item.boxes_needed || 1,
         unit_price: item.unit_price,
-        return_sqft: item.sqft_needed, // default to full qty
-        return_total: item.total_price,
+        return_boxes: item.boxes_needed || 1, // default to full box qty
+        return_total: Math.round((item.boxes_needed || 1) * (item.sqft_per_box || 1) * item.unit_price * 100) / 100,
       })))
     } catch { toast.error('Search failed') }
     setSearching(false)
@@ -115,11 +119,11 @@ function ReturnsContent() {
     }
   }, [newDialogOpen])
 
-  const updateReturnSqft = (idx: number, sqft: number) => {
+  const updateReturnBoxes = (idx: number, boxes: number) => {
     setReturnItems(prev => prev.map((item, i) => {
       if (i !== idx) return item
-      const clamped = Math.max(0, Math.min(sqft, item.sqft_needed))
-      return { ...item, return_sqft: clamped, return_total: Math.round(clamped * item.unit_price * 100) / 100 }
+      const clamped = Math.max(0, Math.min(boxes, item.boxes_needed))
+      return { ...item, return_boxes: clamped, return_total: Math.round(clamped * item.sqft_per_box * item.unit_price * 100) / 100 }
     }))
   }
 
@@ -278,9 +282,10 @@ function ReturnsContent() {
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHead>Product</TableHead>
-                          <TableHead className="text-right">Orig Sq Ft</TableHead>
+                          <TableHead className="text-right">Orig Boxes</TableHead>
+                          <TableHead className="text-right">Sq Ft/Box</TableHead>
                           <TableHead className="text-right">Price/sqft</TableHead>
-                          <TableHead className="text-right w-32">Return Sq Ft</TableHead>
+                          <TableHead className="text-right w-32">Return Boxes</TableHead>
                           <TableHead className="text-right">Return Total</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -288,16 +293,17 @@ function ReturnsContent() {
                         {returnItems.map((item, idx) => (
                           <TableRow key={idx}>
                             <TableCell className="font-medium text-sm">{item.product_name}</TableCell>
-                            <TableCell className="text-right tabular-nums text-sm">{item.sqft_needed.toFixed(2)}</TableCell>
+                            <TableCell className="text-right tabular-nums text-sm">{item.boxes_needed}</TableCell>
+                            <TableCell className="text-right tabular-nums text-sm">{item.sqft_per_box}</TableCell>
                             <TableCell className="text-right tabular-nums text-sm">{fmt(item.unit_price)}</TableCell>
                             <TableCell className="text-right">
                               <Input
                                 type="number"
-                                step="0.01"
+                                step="1"
                                 min="0"
-                                max={item.sqft_needed}
-                                value={item.return_sqft}
-                                onChange={e => updateReturnSqft(idx, parseFloat(e.target.value) || 0)}
+                                max={item.boxes_needed}
+                                value={item.return_boxes}
+                                onChange={e => updateReturnBoxes(idx, parseInt(e.target.value) || 0)}
                                 className="w-28 text-right h-8 text-sm ml-auto"
                               />
                             </TableCell>
