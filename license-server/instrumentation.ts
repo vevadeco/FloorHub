@@ -1,6 +1,11 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const { initSchema } = await import('./lib/db')
-    await initSchema()
+    try {
+      const { initSchema } = await import('./lib/db')
+      await initSchema()
+    } catch (error) {
+      console.error('Failed to initialize database schema:', error)
+      throw error
+    }
   }
 }

@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { Loader2, Upload, Building2, Lock, Facebook, Image, Download, DatabaseBackup, MapPin, Mail, CreditCard, Palette, ShieldCheck } from 'lucide-react'
+import { Loader2, Upload, Building2, Lock, Facebook, Image, Download, DatabaseBackup, MapPin, Mail, CreditCard, Palette, ShieldCheck, Shield } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { TwoFactorSetup } from '@/components/auth/TwoFactorSetup'
 import { TwoFactorDisable } from '@/components/auth/TwoFactorDisable'
@@ -31,6 +31,8 @@ export default function SettingsPage() {
   const [require2fa, setRequire2fa] = useState<boolean>(false)
   const [savingRequire2fa, setSavingRequire2fa] = useState(false)
   const [userRole, setUserRole] = useState<string>('')
+  const [licenseStatus, setLicenseStatus] = useState<string | null>(null)
+  const [licenseGrace, setLicenseGrace] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const importRef = useRef<HTMLInputElement>(null)
   const qbImportRef = useRef<HTMLInputElement>(null)
@@ -44,6 +46,21 @@ export default function SettingsPage() {
       .then(r => r.json())
       .then(d => { setTotpEnabled(d.totp_enabled ?? false); setUserRole(d.role ?? '') })
       .catch(() => setTotpEnabled(false))
+
+    // Read license cookies
+    const cookies = document.cookie.split(';').reduce<Record<string, string>>((acc, c) => {
+      const [key, ...rest] = c.trim().split('=')
+      if (key) acc[key.trim()] = rest.join('=').trim()
+      return acc
+    }, {})
+    const ls = cookies['license_status']
+    if (ls && ['active', 'grace_period', 'expired', 'suspended'].includes(ls)) {
+      setLicenseStatus(ls)
+    }
+    const lg = cookies['license_grace']
+    if (lg && !isNaN(Number(lg))) {
+      setLicenseGrace(Number(lg))
+    }
   }, [])
 
   const handleSave = async (e: React.FormEvent) => {
@@ -209,6 +226,49 @@ export default function SettingsPage() {
         <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground mt-1">Manage your company and account settings</p>
       </div>
+
+      {/* License Status — owner-only, hidden when license_status cookie is not present */}
+      {userRole === 'owner' && licenseStatus && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-heading flex items-center gap-2">
+              <Shield className="h-5 w-5 text-accent" />
+              License
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {licenseStatus === 'active' && (
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-green-500" />
+                <div>
+                  <p className="text-sm font-medium">Active</p>
+                  <p className="text-xs text-muted-foreground">Perpetual</p>
+                </div>
+              </div>
+            )}
+            {licenseStatus === 'grace_period' && (
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-amber-500" />
+                <div>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                    Grace Period — {licenseGrace ?? 0} day{licenseGrace !== 1 ? 's' : ''} remaining
+                  </p>
+                </div>
+              </div>
+            )}
+            {(licenseStatus === 'expired' || licenseStatus === 'suspended') && (
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-red-500" />
+                <div>
+                  <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                    License inactive. Please contact your representative.
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Company Info */}
       <Card>

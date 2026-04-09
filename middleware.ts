@@ -39,6 +39,60 @@ export async function middleware(request: NextRequest) {
       }
     }
 
+    // License check — only when LICENSE_SERVER_URL is configured
+    const licenseServerUrl = process.env.LICENSE_SERVER_URL
+    if (licenseServerUrl) {
+      const checkedAt = request.cookies.get('license_checked_at')?.value
+      const isStale = !checkedAt || (Date.now() - new Date(checkedAt).getTime()) > 24 * 60 * 60 * 1000
+
+      if (isStale) {
+        try {
+          const email = payload.email as string | undefined
+          const domain = email?.split('@').pop()?.toLowerCase() || ''
+
+          const controller = new AbortController()
+          const timeout = setTimeout(() => controller.abort(), 5000)
+          const res = await fetch(`${licenseServerUrl}/api/check-license`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domain }),
+            signal: controller.signal,
+          })
+          clearTimeout(timeout)
+
+          if (res.ok) {
+            const data = await res.json()
+
+            if (data.licensed === false) {
+              const redirectUrl = new URL('/login?license_expired=true', request.url)
+              const response = NextResponse.redirect(redirectUrl)
+              response.cookies.delete('floorhub_token')
+              response.cookies.delete('license_status')
+              response.cookies.delete('license_grace')
+              response.cookies.delete('license_checked_at')
+              return response
+            }
+
+            const response = NextResponse.next()
+            response.cookies.set('license_checked_at', new Date().toISOString(), { path: '/' })
+
+            if (data.status === 'grace_period') {
+              response.cookies.set('license_status', 'grace_period', { path: '/' })
+              response.cookies.set('license_grace', String(data.days_remaining), { path: '/' })
+            } else if (data.status === 'active') {
+              response.cookies.set('license_status', 'active', { path: '/' })
+              response.cookies.delete('license_grace')
+            }
+
+            return response
+          }
+          // Non-ok response — fail-open, allow through
+        } catch {
+          // Network error — fail-open, allow through
+        }
+      }
+    }
+
     return NextResponse.next()
   } catch {
     // Invalid or expired JWT

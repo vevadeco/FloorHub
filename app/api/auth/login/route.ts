@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
 import { sql } from '@/lib/db'
 import { signToken, setAuthCookie } from '@/lib/auth'
+import { checkLicense } from '@/lib/license'
 import type { Role } from '@/types'
 
 export const runtime = 'nodejs'
@@ -72,6 +73,22 @@ export async function POST(request: NextRequest) {
       // settings column not yet migrated — skip enforcement
     }
 
+    // License check — skip entirely if LICENSE_SERVER_URL is not set
+    let licenseResult: Awaited<ReturnType<typeof checkLicense>> | null = null
+    if (process.env.LICENSE_SERVER_URL) {
+      const domain = (user.email as string).split('@').pop()?.toLowerCase() || ''
+      const countResult = await sql`SELECT COUNT(*) as count FROM users`
+      const activeUserCount = parseInt(countResult.rows[0].count)
+      licenseResult = await checkLicense(domain, activeUserCount)
+
+      if (!licenseResult.licensed) {
+        return NextResponse.json(
+          { error: 'Your license is no longer active. Please contact your representative.' },
+          { status: 403 }
+        )
+      }
+    }
+
     const token = await signToken({
       user_id: user.id as string,
       email: user.email as string,
@@ -89,6 +106,20 @@ export async function POST(request: NextRequest) {
       }
     })
     setAuthCookie(response, token)
+
+    // Set license cookies if license check was performed
+    if (licenseResult) {
+      if (licenseResult.licensed && licenseResult.status === 'grace_period') {
+        response.cookies.set('license_status', 'grace_period', { path: '/' })
+        response.cookies.set('license_grace', String(licenseResult.days_remaining), { path: '/' })
+        response.cookies.set('license_checked_at', new Date().toISOString(), { path: '/' })
+      } else if (licenseResult.licensed && licenseResult.status === 'active') {
+        response.cookies.set('license_status', 'active', { path: '/' })
+        response.cookies.set('license_checked_at', new Date().toISOString(), { path: '/' })
+        response.cookies.delete('license_grace')
+      }
+    }
+
     return response
   } catch (error) {
     console.error(error)
