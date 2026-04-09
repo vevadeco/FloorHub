@@ -63,6 +63,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       square_access_token: settings.square_access_token || '',
       square_location_id: settings.square_location_id || '',
       terms_and_conditions: settings.terms_and_conditions || '',
+      restocking_charge_percentage: parseFloat(settings.restocking_charge_percentage || '20'),
       updated_at: settings.updated_at || new Date().toISOString(),
     }
 
