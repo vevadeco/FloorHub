@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.6.0] - 2026-04-09
+
+### Added
+- Store credit system: refund returns as store credit instead of cash
+- Configurable restocking charge percentage in Settings (replaces hardcoded 20%)
+- Per-return restocking fee waiver checkbox
+- Store credit auto-application on invoice payments with balance validation
+- Store credit ledger with full audit trail per customer
+- Customer store credit balance column on customers list
+- Store credit ledger history in customer edit dialog
+- "Apply Store Credit" banner on invoice detail page when customer has available credit
+- New API routes: `GET /api/customers/[id]/store-credit`, `POST /api/invoices/[id]/apply-store-credit`
+- Unit tests for restocking fee calculation utility
+
+### Changed
+- Returns dialog now fetches restocking percentage from settings instead of using hardcoded value
+- Returns POST API accepts `refund_method` and `waive_restocking` fields
+- Dashboard revenue calculation only counts payments for existing invoices
+
 ## [1.5.0] - 2026-04-09
 
 ### Added
