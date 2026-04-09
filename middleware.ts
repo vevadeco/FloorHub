@@ -64,7 +64,8 @@ export async function middleware(request: NextRequest) {
             const data = await res.json()
 
             if (data.licensed === false) {
-              const redirectUrl = new URL('/login?license_expired=true', request.url)
+              const status = data.status || 'expired'
+              const redirectUrl = new URL(`/login?license_status=${status}`, request.url)
               const response = NextResponse.redirect(redirectUrl)
               response.cookies.delete('floorhub_token')
               response.cookies.delete('license_status')

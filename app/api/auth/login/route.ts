@@ -82,8 +82,13 @@ export async function POST(request: NextRequest) {
       licenseResult = await checkLicense(domain, activeUserCount)
 
       if (!licenseResult.licensed) {
+        const statusMsg = licenseResult.status === 'suspended'
+          ? 'Your license has been suspended. Please contact your representative to reactivate.'
+          : licenseResult.status === 'expired'
+          ? 'Your license has expired. Please contact your representative to renew.'
+          : 'Your domain is not licensed for FloorHub. Please contact your representative.'
         return NextResponse.json(
-          { error: 'Your license is no longer active. Please contact your representative.' },
+          { error: statusMsg, license_status: licenseResult.status },
           { status: 403 }
         )
       }

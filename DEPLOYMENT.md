@@ -107,7 +107,7 @@ In **Settings → Environment Variables**, add:
 | Variable | Value | Required |
 |---|---|---|
 | `JWT_SECRET` | Long random string, e.g. `openssl rand -hex 32` | Yes |
-| `LICENSE_SERVER_URL` | URL from Step 2, e.g. `https://floorhub-license.vercel.app` — omit to disable license enforcement | Optional |
+| `LICENSE_SERVER_URL` | URL from Step 2, e.g. `https://floorhub-license-server.vercel.app` — omit to disable license enforcement | Optional |
 | `ADMIN_EMAIL` | Email address for the initial owner account | Yes |
 | `ADMIN_PASSWORD` | Password for the initial owner account | Yes |
 | `ADMIN_NAME` | Display name for the initial owner (default: `Administrator`) | No |

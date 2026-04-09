@@ -17,7 +17,9 @@ function LoginForm() {
   const [error, setError] = useState('')
   const [form, setForm] = useState({ name: '', email: '', password: '', country: 'US' })
   const [showInactivityBanner, setShowInactivityBanner] = useState(searchParams.get('reason') === 'inactivity')
-  const [showLicenseExpiredBanner, setShowLicenseExpiredBanner] = useState(searchParams.get('license_expired') === 'true')
+  const licenseStatus = searchParams.get('license_status')
+  const showLicenseExpired = searchParams.get('license_expired') === 'true'
+  const [showLicenseBanner, setShowLicenseBanner] = useState(!!(licenseStatus || showLicenseExpired))
   const [tempToken, setTempToken] = useState<string | null>(null)
   const [totpCode, setTotpCode] = useState('')
   const [setupToken, setSetupToken] = useState<string | null>(null)
@@ -112,11 +114,17 @@ function LoginForm() {
           </button>
         </div>
       )}
-      {showLicenseExpiredBanner && (
+      {showLicenseBanner && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-md w-full max-w-md">
-          <span className="flex-1">Your license is no longer active. Please contact your representative.</span>
+          <span className="flex-1">
+            {licenseStatus === 'suspended'
+              ? 'Your license has been suspended. Please contact your representative to reactivate.'
+              : licenseStatus === 'expired'
+              ? 'Your license has expired. Please contact your representative to renew.'
+              : 'Your license is no longer active. Please contact your representative.'}
+          </span>
           <button
-            onClick={() => setShowLicenseExpiredBanner(false)}
+            onClick={() => setShowLicenseBanner(false)}
             className="shrink-0 rounded p-0.5 hover:bg-red-100 transition-colors"
             aria-label="Dismiss"
           >
