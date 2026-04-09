@@ -79,7 +79,9 @@ export async function POST(request: NextRequest) {
       const domain = (user.email as string).split('@').pop()?.toLowerCase() || ''
       const countResult = await sql`SELECT COUNT(*) as count FROM users`
       const activeUserCount = parseInt(countResult.rows[0].count)
+      console.log('[login] checking license for domain:', domain, 'against', process.env.LICENSE_SERVER_URL)
       licenseResult = await checkLicense(domain, activeUserCount)
+      console.log('[login] license result:', JSON.stringify(licenseResult))
 
       if (!licenseResult.licensed) {
         const statusMsg = licenseResult.status === 'suspended'
