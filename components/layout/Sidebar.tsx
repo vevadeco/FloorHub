@@ -111,7 +111,7 @@ export function Sidebar({ user, logoUrl }: SidebarProps) {
           Sign out
         </button>
         <div className="px-3 pt-2 pb-1">
-          <p className="text-[10px] text-muted-foreground/50 text-center">made with ❤️ by VevadeCo · v1.4.0</p>
+          <p className="text-[10px] text-muted-foreground/50 text-center">made with ❤️ by VevadeCo · v1.6.0</p>
         </div>
       </div>
     </aside>
