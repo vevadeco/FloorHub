@@ -86,6 +86,7 @@ export interface Customer {
   state: string
   zip_code: string
   notes: string
+  store_credit_balance: number
   created_at: string
 }
 
@@ -157,6 +158,7 @@ export interface Settings {
   square_access_token: string
   square_location_id: string
   terms_and_conditions: string
+  restocking_charge_percentage: number
   updated_at: string
 }
 
@@ -222,4 +224,19 @@ export interface DeliveryOrderListItem {
   status: string
   created_at: string
   job: DeliveryOrder | null
+}
+
+export type RefundMethod = 'original_payment' | 'store_credit'
+export type StoreCreditTransactionType = 'credit' | 'debit'
+export type StoreCreditReferenceType = 'return' | 'invoice'
+
+export interface StoreCreditLedgerEntry {
+  id: string
+  customer_id: string
+  transaction_type: StoreCreditTransactionType
+  amount: number
+  reference_type: StoreCreditReferenceType
+  reference_id: string
+  description: string
+  created_at: string
 }

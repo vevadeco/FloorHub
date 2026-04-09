@@ -364,4 +364,29 @@ export async function initSchema(): Promise<void> {
   `
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS delivery_orders_invoice_id_idx ON delivery_orders(invoice_id)`
   await sql`CREATE SEQUENCE IF NOT EXISTS delivery_orders_do_number_seq`
+
+  // Migration: add restocking_charge_percentage to settings (store credit feature)
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS restocking_charge_percentage NUMERIC(5,2) NOT NULL DEFAULT 20.00`
+
+  // Migration: add store_credit_balance to customers (store credit feature)
+  await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS store_credit_balance NUMERIC(10,2) NOT NULL DEFAULT 0.00`
+
+  // Migration: add refund_method and waive_restocking to returns (store credit feature)
+  await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS refund_method TEXT NOT NULL DEFAULT 'original_payment'`
+  await sql`ALTER TABLE returns ADD COLUMN IF NOT EXISTS waive_restocking BOOLEAN NOT NULL DEFAULT FALSE`
+
+  // Migration: create store_credit_ledger table (store credit feature)
+  await sql`
+    CREATE TABLE IF NOT EXISTS store_credit_ledger (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      transaction_type TEXT NOT NULL CHECK (transaction_type IN ('credit', 'debit')),
+      amount NUMERIC(10,2) NOT NULL CHECK (amount > 0),
+      reference_type TEXT NOT NULL CHECK (reference_type IN ('return', 'invoice')),
+      reference_id TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+  await sql`CREATE INDEX IF NOT EXISTS store_credit_ledger_customer_idx ON store_credit_ledger(customer_id)`
 }

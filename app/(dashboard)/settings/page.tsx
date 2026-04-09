@@ -270,6 +270,18 @@ export default function SettingsPage() {
                 />
                 <p className="text-xs text-muted-foreground">Minimum profit margin added on top of cost price. e.g. cost $2.99 + margin $0.50 = min sell price $3.49.</p>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="restocking_charge_percentage">Restocking Charge (%)</Label>
+                <Input
+                  id="restocking_charge_percentage"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={settings.restocking_charge_percentage ?? ''}
+                  onChange={e => setSettings(s => ({ ...s, restocking_charge_percentage: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="company_address">Address</Label>

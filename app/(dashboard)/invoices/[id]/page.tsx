@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { ArrowLeft, Download, Mail, CreditCard, RefreshCw, FileText, Loader2, Banknote, Trash2, Pencil, Plus, RotateCcw, Printer } from 'lucide-react'
+import { ArrowLeft, Download, Mail, CreditCard, RefreshCw, FileText, Loader2, Banknote, Trash2, Pencil, Plus, RotateCcw, Printer, Wallet } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
 
 const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
@@ -43,6 +44,8 @@ function InvoiceDetail() {
   const [saving, setSaving] = useState(false)
   const [paymentGateway, setPaymentGateway] = useState<string>('none')
   const [payForm, setPayForm] = useState({ amount: '', payment_method: 'cash', reference_number: '', notes: '', date: new Date().toISOString().split('T')[0] })
+  const [storeCreditBalance, setStoreCreditBalance] = useState(0)
+  const [applyingCredit, setApplyingCredit] = useState(false)
   // Edit form state
   const [editCustomer, setEditCustomer] = useState({ name: '', email: '', phone: '', address: '' })
   const [editItems, setEditItems] = useState<any[]>([])
@@ -54,10 +57,19 @@ function InvoiceDetail() {
 
   const loadInvoice = () => fetch(`/api/invoices/${id}`).then(r => r.json()).then(setInvoice)
   const loadPayments = () => fetch(`/api/invoices/${id}/manual-payment`).then(r => r.json()).then(d => setPayments(Array.isArray(d) ? d : []))
+  const loadStoreCredit = (customerId: string) => {
+    if (!customerId) return
+    fetch(`/api/customers/${customerId}/store-credit`).then(r => r.ok ? r.json() : null).then(d => {
+      if (d) setStoreCreditBalance(d.balance ?? 0)
+    })
+  }
 
   useEffect(() => {
     Promise.all([
-      loadInvoice(),
+      fetch(`/api/invoices/${id}`).then(r => r.json()).then(inv => {
+        setInvoice(inv)
+        if (inv?.customer_id) loadStoreCredit(inv.customer_id)
+      }),
       loadPayments(),
       fetch('/api/products').then(r => r.json()).then(d => setProducts(Array.isArray(d) ? d : [])),
       fetch('/api/settings/payment-gateway').then(r => r.json()).then(d => setPaymentGateway(d.payment_gateway || 'none')),
@@ -231,6 +243,30 @@ function InvoiceDetail() {
     if (res.ok) { toast.success('Payment deleted'); loadInvoice(); loadPayments() }
   }
 
+  const handleApplyStoreCredit = async () => {
+    if (!invoice) return
+    const totalPaidSoFar = payments.reduce((s: number, p: any) => s + Number(p.amount), 0)
+    const outstanding = Number(invoice.total) - totalPaidSoFar
+    const amount = Math.round(Math.min(storeCreditBalance, outstanding) * 100) / 100
+    if (amount <= 0) return
+    setApplyingCredit(true)
+    try {
+      const res = await fetch(`/api/invoices/${id}/apply-store-credit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount }) })
+      if (res.ok) {
+        const d = await res.json()
+        toast.success(`${fmt(amount)} store credit applied`)
+        setStoreCreditBalance(d.remaining_balance ?? 0)
+        loadInvoice()
+        loadPayments()
+      } else {
+        const d = await res.json()
+        toast.error(d.error ?? 'Failed to apply store credit')
+      }
+    } finally {
+      setApplyingCredit(false)
+    }
+  }
+
   if (loading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
   if (!invoice) return <div className="text-center py-12"><FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="font-medium text-lg">Invoice not found</h3><Button variant="link" onClick={() => router.push('/invoices')}>Back to invoices</Button></div>
 
@@ -322,6 +358,22 @@ function InvoiceDetail() {
                 ))}</TableBody>
               </Table></div></CardContent>
             </Card>
+          )}
+
+          {!invoice.is_estimate && invoice.status !== 'paid' && storeCreditBalance > 0 && balanceDue > 0 && (
+            <Alert className="bg-blue-50 border-blue-200">
+              <Wallet className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="flex items-center justify-between">
+                <span className="text-blue-800">
+                  Customer has <span className="font-semibold">{fmt(storeCreditBalance)}</span> store credit available.
+                  {' '}Applying <span className="font-semibold">{fmt(Math.min(storeCreditBalance, balanceDue))}</span> to this invoice.
+                </span>
+                <Button size="sm" className="ml-4 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleApplyStoreCredit} disabled={applyingCredit}>
+                  {applyingCredit ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wallet className="h-4 w-4 mr-2" />}
+                  Apply Store Credit
+                </Button>
+              </AlertDescription>
+            </Alert>
           )}
 
           {invoice.notes && <Card><CardHeader><CardTitle className="font-heading text-lg">Notes</CardTitle></CardHeader><CardContent><p className="text-muted-foreground whitespace-pre-wrap">{invoice.notes}</p></CardContent></Card>}

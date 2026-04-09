@@ -12,13 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
+import { Checkbox } from '@/components/ui/checkbox'
 import { RotateCcw, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-
-const RESTOCKING_RATE = 0.20
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -55,14 +54,22 @@ function ReturnsContent() {
   const [returnItems, setReturnItems] = useState<ReturnItem[]>([])
   const [form, setForm] = useState({ reason: '', notes: '', transaction_reference: '' })
   const [submitting, setSubmitting] = useState(false)
+  const [restockingPercentage, setRestockingPercentage] = useState(20)
+  const [waiveRestocking, setWaiveRestocking] = useState(false)
+  const [refundMethod, setRefundMethod] = useState<'original_payment' | 'store_credit'>('original_payment')
+  const [storeCreditConfirmation, setStoreCreditConfirmation] = useState<{ amount: number } | null>(null)
 
   const load = async () => {
-    const [r, me] = await Promise.all([
+    const [r, me, settings] = await Promise.all([
       fetch('/api/returns').then(res => res.json()),
       fetch('/api/auth/me').then(res => res.json()),
+      fetch('/api/settings').then(res => res.json()),
     ])
     setReturns(Array.isArray(r) ? r : [])
     setUserRole(me?.role ?? 'employee')
+    if (settings?.restocking_charge_percentage != null) {
+      setRestockingPercentage(Number(settings.restocking_charge_percentage))
+    }
     setLoading(false)
   }
 
@@ -118,10 +125,10 @@ function ReturnsContent() {
 
   const totals = useMemo(() => {
     const refund = returnItems.reduce((s, i) => s + i.return_total, 0)
-    const restocking = Math.round(refund * RESTOCKING_RATE * 100) / 100
+    const restocking = waiveRestocking ? 0 : Math.round(refund * (restockingPercentage / 100) * 100) / 100
     const net = Math.round((refund - restocking) * 100) / 100
     return { refund, restocking, net }
-  }, [returnItems])
+  }, [returnItems, restockingPercentage, waiveRestocking])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -137,9 +144,16 @@ function ReturnsContent() {
         notes: form.notes,
         transaction_reference: form.transaction_reference,
         items: returnItems,
+        waive_restocking: waiveRestocking,
+        refund_method: refundMethod,
       }),
     })
     if (res.ok) {
+      const data = await res.json()
+      if (refundMethod === 'store_credit') {
+        const netAmount = Number(data.net_refund ?? totals.net)
+        setStoreCreditConfirmation({ amount: netAmount })
+      }
       toast.success('Return created')
       setNewDialogOpen(false)
       resetDialog()
@@ -156,6 +170,8 @@ function ReturnsContent() {
     setInvoiceSearch('')
     setReturnItems([])
     setForm({ reason: '', notes: '', transaction_reference: '' })
+    setWaiveRestocking(false)
+    setRefundMethod('original_payment')
   }
 
   const updateStatus = async (id: string, status: string) => {
@@ -300,13 +316,37 @@ function ReturnsContent() {
                     <span className="tabular-nums">{fmt(totals.refund)}</span>
                   </div>
                   <div className="flex justify-between text-orange-600">
-                    <span>Restocking fee (20%)</span>
+                    <span>Restocking fee ({waiveRestocking ? 'waived' : `${restockingPercentage}%`})</span>
                     <span className="tabular-nums">-{fmt(totals.restocking)}</span>
                   </div>
                   <div className="flex justify-between font-semibold border-t pt-1.5">
                     <span>Net refund to customer</span>
                     <span className="tabular-nums text-green-600">{fmt(totals.net)}</span>
                   </div>
+                </div>
+
+                {/* Waive Restocking Fee */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="waive-restocking"
+                    checked={waiveRestocking}
+                    onCheckedChange={(checked) => setWaiveRestocking(checked === true)}
+                  />
+                  <Label htmlFor="waive-restocking" className="text-sm font-normal cursor-pointer">
+                    Waive Restocking Fee
+                  </Label>
+                </div>
+
+                {/* Refund Method */}
+                <div className="space-y-2">
+                  <Label>Refund Method</Label>
+                  <Select value={refundMethod} onValueChange={(v) => setRefundMethod(v as 'original_payment' | 'store_credit')}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="original_payment">Original Payment</SelectItem>
+                      <SelectItem value="store_credit">Store Credit</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -331,6 +371,21 @@ function ReturnsContent() {
                 </form>
               </>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Store Credit Confirmation Dialog */}
+      <Dialog open={storeCreditConfirmation !== null} onOpenChange={(open) => { if (!open) setStoreCreditConfirmation(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="font-heading">Store Credit Issued</DialogTitle></DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              A store credit of <span className="font-semibold text-green-600">{fmt(storeCreditConfirmation?.amount ?? 0)}</span> has been issued to the customer&apos;s account.
+            </p>
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setStoreCreditConfirmation(null)}>Close</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

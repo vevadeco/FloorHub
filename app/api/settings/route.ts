@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS square_access_token TEXT DEFAULT ''`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS square_location_id TEXT DEFAULT ''`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS terms_and_conditions TEXT DEFAULT ''`
+    await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS restocking_charge_percentage NUMERIC(5,2) NOT NULL DEFAULT 20.00`
     const result = await sql`SELECT * FROM settings WHERE id='company_settings'`
     if (result.rows.length === 0) {
       return NextResponse.json({
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
         payment_gateway: 'none', stripe_secret_key: '', stripe_publishable_key: '',
         square_access_token: '', square_location_id: '',
         terms_and_conditions: '',
+        restocking_charge_percentage: 20,
         updated_at: new Date().toISOString()
       })
     }
@@ -63,6 +65,7 @@ export async function PUT(request: NextRequest) {
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS square_access_token TEXT DEFAULT ''`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS square_location_id TEXT DEFAULT ''`
     await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS terms_and_conditions TEXT DEFAULT ''`
+    await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS restocking_charge_percentage NUMERIC(5,2) NOT NULL DEFAULT 20.00`
     const body = await request.json()
     const {
       company_name = '', company_address = '', company_phone = '', company_email = '',
@@ -74,7 +77,17 @@ export async function PUT(request: NextRequest) {
       payment_gateway = 'none', stripe_secret_key = '', stripe_publishable_key = '',
       square_access_token = '', square_location_id = '',
       terms_and_conditions = '',
+      restocking_charge_percentage = 20,
     } = body
+
+    // Validate restocking_charge_percentage is between 0 and 100 inclusive
+    const restockingPct = Number(restocking_charge_percentage)
+    if (isNaN(restockingPct) || restockingPct < 0 || restockingPct > 100) {
+      return NextResponse.json(
+        { error: 'restocking_charge_percentage must be a number between 0 and 100' },
+        { status: 400 }
+      )
+    }
 
     const result = await sql`
       INSERT INTO settings (id, company_name, company_address, company_phone, company_email,
@@ -82,13 +95,13 @@ export async function PUT(request: NextRequest) {
         geoapify_api_key, country, aws_place_index, amazon_location_api_key, amazon_location_region,
         resend_api_key, resend_from_email,
         payment_gateway, stripe_secret_key, stripe_publishable_key, square_access_token, square_location_id,
-        terms_and_conditions, updated_at)
+        terms_and_conditions, restocking_charge_percentage, updated_at)
       VALUES ('company_settings', ${company_name}, ${company_address}, ${company_phone}, ${company_email},
         ${tax_rate}, ${facebook_api_token}, ${facebook_page_id}, '', ${google_maps_api_key}, ${min_floor_price},
         ${geoapify_api_key}, ${country}, ${aws_place_index}, ${amazon_location_api_key}, ${amazon_location_region},
         ${resend_api_key}, ${resend_from_email},
         ${payment_gateway}, ${stripe_secret_key}, ${stripe_publishable_key}, ${square_access_token}, ${square_location_id},
-        ${terms_and_conditions}, NOW())
+        ${terms_and_conditions}, ${restockingPct}, NOW())
       ON CONFLICT (id) DO UPDATE SET
         company_name=${company_name}, company_address=${company_address},
         company_phone=${company_phone}, company_email=${company_email},
@@ -102,6 +115,7 @@ export async function PUT(request: NextRequest) {
         stripe_publishable_key=${stripe_publishable_key}, square_access_token=${square_access_token},
         square_location_id=${square_location_id},
         terms_and_conditions=${terms_and_conditions},
+        restocking_charge_percentage=${restockingPct},
         updated_at=NOW()
       RETURNING *`
     return NextResponse.json(result.rows[0])
