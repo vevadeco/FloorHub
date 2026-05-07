@@ -320,6 +320,7 @@ export async function initSchema(): Promise<void> {
 
   // Migration: add 2FA support (see lib/migrations/add-2fa-schema.sql)
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT FALSE`
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_exempt BOOLEAN NOT NULL DEFAULT FALSE`
 
   await sql`
     CREATE TABLE IF NOT EXISTS user_totp (

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
     requireOwner(user)
-    const result = await sql`SELECT id, email, name, role, commission_rate, created_at FROM users ORDER BY created_at`
+    const result = await sql`SELECT id, email, name, role, commission_rate, created_at, COALESCE(totp_exempt, false) as totp_exempt FROM users ORDER BY created_at`
     return NextResponse.json(result.rows)
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: 401 })

@@ -49,6 +49,14 @@ export default function EmployeesPage() {
     else { const d = await res.json(); toast.error(d.error ?? 'Failed to reset 2FA') }
   }
 
+  const handleToggleExempt = async (id: string, name: string, exempt: boolean) => {
+    const action = exempt ? `Exempt ${name} from 2FA requirement` : `Re-enable 2FA requirement for ${name}`
+    if (!confirm(`${action}?`)) return
+    const res = await fetch(`/api/users/${id}/totp-exempt`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ exempt }) })
+    if (res.ok) { toast.success(exempt ? `${name} exempted from 2FA` : `2FA required for ${name}`); load() }
+    else { const d = await res.json(); toast.error(d.error ?? 'Failed') }
+  }
+
   const saveCommission = async (id: string) => {
     const rate = parseFloat(commEdit?.value ?? '')
     if (isNaN(rate) || rate < 0 || rate > 100) { toast.error('Rate must be 0–100'); return }
@@ -116,6 +124,11 @@ export default function EmployeesPage() {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
+                    {u.id !== currentUserId && (
+                      <Button variant="ghost" size="icon" title={u.totp_exempt ? 'Re-enable 2FA requirement' : 'Exempt from 2FA'} onClick={() => handleToggleExempt(u.id, u.name, !u.totp_exempt)}>
+                        {u.totp_exempt ? <Shield className="h-4 w-4 text-amber-500" /> : <ShieldOff className="h-4 w-4 text-muted-foreground" />}
+                      </Button>
+                    )}
                     {u.id !== currentUserId && (
                       <Button variant="ghost" size="icon" title="Reset 2FA" onClick={() => handleReset2FA(u.id, u.name)}><ShieldOff className="h-4 w-4" /></Button>
                     )}

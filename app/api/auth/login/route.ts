@@ -59,9 +59,15 @@ export async function POST(request: NextRequest) {
     // Check if org requires 2FA but user hasn't set it up yet
     try {
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS require_2fa BOOLEAN NOT NULL DEFAULT FALSE`
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_exempt BOOLEAN NOT NULL DEFAULT FALSE`
       const settingsResult = await sql`SELECT require_2fa FROM settings WHERE id = 'company_settings'`
       const require2fa = settingsResult.rows[0]?.require_2fa === true
-      if (require2fa) {
+
+      // Check if user is exempt from 2FA requirement
+      const exemptResult = await sql`SELECT totp_exempt FROM users WHERE id = ${user.id}`
+      const isExempt = exemptResult.rows[0]?.totp_exempt === true
+
+      if (require2fa && !isExempt) {
         const setupToken = await new SignJWT({ user_id: user.id as string, purpose: '2fa-setup' })
           .setProtectedHeader({ alg: 'HS256' })
           .setIssuedAt()
