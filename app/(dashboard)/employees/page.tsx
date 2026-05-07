@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Plus, Trash2, Shield, User, Eye, EyeOff, Pencil, Users } from 'lucide-react'
+import { Plus, Trash2, Shield, User, Eye, EyeOff, Pencil, Users, ShieldOff } from 'lucide-react'
 
 export default function EmployeesPage() {
   const [users, setUsers] = useState<any[]>([])
@@ -40,6 +40,13 @@ export default function EmployeesPage() {
     const res = await fetch(`/api/users/${id}`, { method: 'DELETE' })
     if (res.ok) { toast.success('Employee deleted'); load() }
     else { const d = await res.json(); toast.error(d.error ?? 'Failed') }
+  }
+
+  const handleReset2FA = async (id: string, name: string) => {
+    if (!confirm(`Reset 2FA for ${name}? They will need to set up their authenticator again.`)) return
+    const res = await fetch(`/api/users/${id}/reset-2fa`, { method: 'POST' })
+    if (res.ok) { toast.success(`2FA reset for ${name}`) }
+    else { const d = await res.json(); toast.error(d.error ?? 'Failed to reset 2FA') }
   }
 
   const saveCommission = async (id: string) => {
@@ -108,7 +115,12 @@ export default function EmployeesPage() {
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  {u.role !== 'owner' && u.id !== currentUserId && <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(u.id)}><Trash2 className="h-4 w-4" /></Button>}
+                  <div className="flex justify-end gap-1">
+                    {u.id !== currentUserId && (
+                      <Button variant="ghost" size="icon" title="Reset 2FA" onClick={() => handleReset2FA(u.id, u.name)}><ShieldOff className="h-4 w-4" /></Button>
+                    )}
+                    {u.id !== currentUserId && <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(u.id)}><Trash2 className="h-4 w-4" /></Button>}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}</TableBody>
