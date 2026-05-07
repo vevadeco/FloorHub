@@ -20,7 +20,7 @@ export default function EmployeesPage() {
   const [commEdit, setCommEdit] = useState<{ id: string; value: string } | null>(null)
   const [currentUserId, setCurrentUserId] = useState('')
 
-  const load = () => fetch('/api/users').then(r => r.json()).then(setUsers).finally(() => setLoading(false))
+  const load = () => fetch('/api/users', { cache: 'no-store' }).then(r => r.json()).then(setUsers).finally(() => setLoading(false))
   useEffect(() => {
     load()
     fetch('/api/auth/me').then(r => r.json()).then(d => setCurrentUserId(d.user_id ?? d.id ?? ''))
