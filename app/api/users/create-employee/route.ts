@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
     if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: 401 })
     if (error instanceof ForbiddenError) return NextResponse.json({ error: error.message }, { status: 403 })
     if (error instanceof ValidationError) return NextResponse.json({ error: error.message }, { status: 400 })
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[create-employee]', error)
+    const msg = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
