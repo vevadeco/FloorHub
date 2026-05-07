@@ -10,9 +10,10 @@ export async function POST(request: NextRequest) {
     const user = await getAuthUser(request)
     requireOwner(user)
     const body = await request.json()
-    const { name, email, password } = body
+    const { name, email, password, role = 'employee' } = body
     if (!name || !email || !password) throw new ValidationError('name, email, and password are required')
     if (password.length < 6) throw new ValidationError('Password must be at least 6 characters')
+    if (!['owner', 'employee'].includes(role)) throw new ValidationError('Role must be "owner" or "employee"')
 
     const existing = await sql`SELECT id FROM users WHERE email = ${email}`
     if (existing.rows.length > 0) throw new ValidationError('Email already registered')
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     const id = generateId()
     const result = await sql`
       INSERT INTO users (id, email, name, role, password, commission_rate, created_at)
-      VALUES (${id}, ${email}, ${name}, 'employee', ${hashed}, 0.0, NOW())
+      VALUES (${id}, ${email}, ${name}, ${role}, ${hashed}, 0.0, NOW())
       RETURNING id, email, name, role, commission_rate, created_at`
     return NextResponse.json(result.rows[0], { status: 201 })
   } catch (error) {

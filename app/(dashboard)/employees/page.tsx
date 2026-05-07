@@ -16,7 +16,7 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [showPw, setShowPw] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'employee' })
   const [commEdit, setCommEdit] = useState<{ id: string; value: string } | null>(null)
   const [currentUserId, setCurrentUserId] = useState('')
 
@@ -30,7 +30,7 @@ export default function EmployeesPage() {
     e.preventDefault()
     if (form.password.length < 6) { toast.error('Password must be at least 6 characters'); return }
     const res = await fetch('/api/users/create-employee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-    if (res.ok) { toast.success('Employee created'); setDialogOpen(false); setForm({ name: '', email: '', password: '' }); load() }
+    if (res.ok) { toast.success('User created'); setDialogOpen(false); setForm({ name: '', email: '', password: '', role: 'employee' }); load() }
     else { const d = await res.json(); toast.error(d.error ?? 'Failed') }
   }
 
@@ -55,9 +55,9 @@ export default function EmployeesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div><h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight">Employee Accounts</h1><p className="text-muted-foreground mt-1">Manage employee access to the system</p></div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button className="bg-accent hover:bg-accent/90"><Plus className="h-4 w-4 mr-2" />Add Employee</Button></DialogTrigger>
+          <DialogTrigger asChild><Button className="bg-accent hover:bg-accent/90"><Plus className="h-4 w-4 mr-2" />Add User</Button></DialogTrigger>
           <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle className="font-heading">Create Employee Account</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="font-heading">Create User Account</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4 mt-4">
               <div className="space-y-2"><Label>Full Name *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
               <div className="space-y-2"><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required /></div>
@@ -65,6 +65,12 @@ export default function EmployeesPage() {
                 <div className="relative"><Input type={showPw ? 'text' : 'password'} value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={6} className="pr-10" />
                   <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
                 </div><p className="text-xs text-muted-foreground">Minimum 6 characters</p>
+              </div>
+              <div className="space-y-2"><Label>Role</Label>
+                <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                  <option value="employee">Employee</option>
+                  <option value="owner">Owner</option>
+                </select>
               </div>
               <div className="flex justify-end gap-2 pt-4"><Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button type="submit" className="bg-accent hover:bg-accent/90">Create Account</Button></div>
             </form>
