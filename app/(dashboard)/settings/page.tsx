@@ -25,6 +25,8 @@ export default function SettingsPage() {
   const [importingStore, setImportingStore] = useState(false)
   const [importingQB, setImportingQB] = useState(false)
   const [qbType, setQbType] = useState<'customers' | 'products' | 'invoices' | 'expenses'>('customers')
+  const [qbExportType, setQbExportType] = useState<'customers' | 'products' | 'invoices' | 'expenses'>('customers')
+  const [exportingQB, setExportingQB] = useState(false)
   const [totpEnabled, setTotpEnabled] = useState<boolean | null>(null)
   const [show2FASetup, setShow2FASetup] = useState(false)
   const [show2FADisable, setShow2FADisable] = useState(false)
@@ -216,6 +218,26 @@ export default function SettingsPage() {
     } finally {
       setImportingQB(false)
       e.target.value = ''
+    }
+  }
+
+  const handleQBExport = async () => {
+    setExportingQB(true)
+    try {
+      const res = await fetch(`/api/quickbooks/export?type=${qbExportType}`)
+      if (!res.ok) { const d = await res.json(); toast.error(d.error ?? 'Export failed'); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `floorhub-${qbExportType}-export.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success(`${qbExportType} exported as CSV`)
+    } catch {
+      toast.error('Failed to export')
+    } finally {
+      setExportingQB(false)
     }
   }
 
@@ -810,6 +832,27 @@ export default function SettingsPage() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">In QuickBooks: go to Reports → export the relevant report as CSV, or use File → Utilities → Export.</p>
+          </div>
+          <Separator />
+          <div className="space-y-3">
+            <p className="text-sm font-medium">Export to QuickBooks (CSV)</p>
+            <p className="text-xs text-muted-foreground">Export data as a CSV file compatible with QuickBooks import.</p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <select
+                value={qbExportType}
+                onChange={e => setQbExportType(e.target.value as typeof qbExportType)}
+                className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="customers">Customers</option>
+                <option value="products">Products / Items</option>
+                <option value="invoices">Invoices</option>
+                <option value="expenses">Expenses</option>
+              </select>
+              <Button variant="outline" onClick={handleQBExport} disabled={exportingQB}>
+                {exportingQB ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Export CSV
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
