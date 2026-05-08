@@ -43,7 +43,8 @@ export async function middleware(request: NextRequest) {
     const licenseServerUrl = process.env.LICENSE_SERVER_URL
     if (licenseServerUrl) {
       const checkedAt = request.cookies.get('license_checked_at')?.value
-      const isStale = !checkedAt || (Date.now() - new Date(checkedAt).getTime()) > 24 * 60 * 60 * 1000
+      const hasExpiresAt = request.cookies.get('license_expires_at')?.value
+      const isStale = !checkedAt || !hasExpiresAt || (Date.now() - new Date(checkedAt).getTime()) > 24 * 60 * 60 * 1000
 
       if (isStale) {
         try {
@@ -80,8 +81,10 @@ export async function middleware(request: NextRequest) {
             if (data.status === 'grace_period') {
               response.cookies.set('license_status', 'grace_period', { path: '/' })
               response.cookies.set('license_grace', String(data.days_remaining), { path: '/' })
+              if (data.expires_at) response.cookies.set('license_expires_at', data.expires_at, { path: '/' })
             } else if (data.status === 'active') {
               response.cookies.set('license_status', 'active', { path: '/' })
+              response.cookies.set('license_expires_at', data.expires_at || 'perpetual', { path: '/' })
               response.cookies.delete('license_grace')
             }
 
