@@ -7,11 +7,14 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
     requireOwner(user)
+    // Ensure totp_exempt column exists
+    try { await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_exempt BOOLEAN NOT NULL DEFAULT FALSE` } catch { /* no-op */ }
     const result = await sql`SELECT id, email, name, role, commission_rate, created_at, COALESCE(totp_exempt, false) as totp_exempt FROM users ORDER BY created_at`
     return NextResponse.json(result.rows)
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: 401 })
     if (error instanceof ForbiddenError) return NextResponse.json({ error: error.message }, { status: 403 })
+    console.error('[users GET]', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
