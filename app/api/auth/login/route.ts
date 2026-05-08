@@ -126,9 +126,11 @@ export async function POST(request: NextRequest) {
         response.cookies.set('license_status', 'grace_period', { path: '/' })
         response.cookies.set('license_grace', String(licenseResult.days_remaining), { path: '/' })
         response.cookies.set('license_checked_at', new Date().toISOString(), { path: '/' })
+        response.cookies.set('license_expires_at', licenseResult.expires_at, { path: '/' })
       } else if (licenseResult.licensed && licenseResult.status === 'active') {
         response.cookies.set('license_status', 'active', { path: '/' })
         response.cookies.set('license_checked_at', new Date().toISOString(), { path: '/' })
+        response.cookies.set('license_expires_at', licenseResult.expires_at || 'perpetual', { path: '/' })
         response.cookies.delete('license_grace')
       }
     }

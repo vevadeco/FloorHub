@@ -33,6 +33,7 @@ export default function SettingsPage() {
   const [userRole, setUserRole] = useState<string>('')
   const [licenseStatus, setLicenseStatus] = useState<string | null>(null)
   const [licenseGrace, setLicenseGrace] = useState<number | null>(null)
+  const [licenseExpiresAt, setLicenseExpiresAt] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const importRef = useRef<HTMLInputElement>(null)
   const qbImportRef = useRef<HTMLInputElement>(null)
@@ -60,6 +61,10 @@ export default function SettingsPage() {
     const lg = cookies['license_grace']
     if (lg && !isNaN(Number(lg))) {
       setLicenseGrace(Number(lg))
+    }
+    const le = cookies['license_expires_at']
+    if (le) {
+      setLicenseExpiresAt(le)
     }
   }, [])
 
@@ -242,7 +247,11 @@ export default function SettingsPage() {
                 <span className="h-3 w-3 rounded-full bg-green-500" />
                 <div>
                   <p className="text-sm font-medium">Active</p>
-                  <p className="text-xs text-muted-foreground">Perpetual</p>
+                  <p className="text-xs text-muted-foreground">
+                    {licenseExpiresAt && licenseExpiresAt !== 'perpetual'
+                      ? `Expires: ${new Date(licenseExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                      : 'Perpetual'}
+                  </p>
                 </div>
               </div>
             )}
